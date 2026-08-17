@@ -1,0 +1,3211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revisión de Servicio — Red de Acceso</title>
+<style>
+  :root{
+    --bg:#0a0e14;
+    --panel:#0f151d;
+    --panel-2:#131b25;
+    --line:#1c2632;
+    --line-2:#2a3646;
+    --ink:#c9d3df;
+    --ink-dim:#7a8798;
+    --ink-faint:#4a5566;
+    --accent:#3fb950;      /* verde señal */
+    --warn:#e3b341;
+    --bad:#f85149;
+    --acc2:#58a6ff;
+    --acc3:#a371f7;
+    --mono:'JetBrains Mono','Fira Code','Consolas',ui-monospace,monospace;
+    --sans:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+  body{
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(63,185,80,0.03) 0%, transparent 40%),
+      radial-gradient(circle at 80% 100%, rgba(88,166,255,0.03) 0%, transparent 40%);
+  }
+  ::selection{background:var(--acc2);color:var(--bg)}
+
+  /* --- barra superior --- */
+  header{
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(19,27,37,0.6), transparent);
+    backdrop-filter:blur(6px);
+    position:sticky;top:0;z-index:10;
+  }
+  .top{
+    max-width:1400px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;gap:24px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-mark{
+    width:36px;height:36px;
+    border:1px solid var(--line-2);
+    display:grid;place-items:center;
+    background:var(--panel-2);
+    position:relative;
+  }
+  .brand-mark::before{
+    content:'';position:absolute;inset:6px;
+    border:1px solid var(--accent);
+    animation:pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse{50%{opacity:0.3;transform:scale(0.85)}}
+  .brand-text{line-height:1.2}
+  .brand-text .k{
+    font-family:var(--mono);font-size:10px;letter-spacing:0.24em;
+    color:var(--ink-dim);text-transform:uppercase;
+  }
+  .brand-text .n{font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-0.01em}
+  .meta{
+    font-family:var(--mono);font-size:11px;color:var(--ink-dim);
+    display:flex;align-items:center;gap:16px;
+  }
+  .meta .dot{width:6px;height:6px;background:var(--accent);display:inline-block;margin-right:6px;border-radius:50%;box-shadow:0 0 8px var(--accent)}
+  .meta .dot.pending{background:var(--ink-faint);box-shadow:none}
+  .meta .dot.err{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+
+  /* --- layout --- */
+  main{max-width:1400px;margin:0 auto;padding:32px 24px 80px}
+
+  .row{display:grid;gap:16px;margin-bottom:16px}
+  .row.g2{grid-template-columns:2fr 1fr}
+  .row.g3{grid-template-columns:1fr 1fr 1fr}
+  .row.g4{grid-template-columns:repeat(4,1fr)}
+  @media (max-width:900px){
+    .row.g2,.row.g3,.row.g4{grid-template-columns:1fr}
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:20px;
+    position:relative;
+    transition:border-color 0.3s ease;
+  }
+  .card.fail{
+    border-color:var(--bad);
+    background:linear-gradient(180deg, rgba(248,81,73,0.06), var(--panel));
+  }
+  .card.fail::before{
+    content:'';
+    position:absolute;
+    top:0;left:0;bottom:0;
+    width:3px;
+    background:var(--bad);
+  }
+  .card.warn{
+    border-color:var(--warn);
+  }
+  .card.warn::before{
+    content:'';
+    position:absolute;
+    top:0;left:0;bottom:0;
+    width:3px;
+    background:var(--warn);
+  }
+  .card-title{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:12px;margin-bottom:16px;
+    border-bottom:1px dashed var(--line-2);
+  }
+  .card-title .idx{
+    color:var(--ink-faint);font-weight:600;
+  }
+  .card-title .status{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:2px 8px;
+    border:1px solid var(--line-2);
+    color:var(--ink-dim);
+    font-family:var(--mono);letter-spacing:0.1em;
+  }
+  .card-title .status.ok{color:var(--accent);border-color:var(--accent)}
+  .card-title .status.warn{color:var(--warn);border-color:var(--warn)}
+  .card-title .status.bad{color:var(--bad);border-color:var(--bad)}
+  .card-title .status.run{color:var(--acc2);border-color:var(--acc2);animation:blink 1s ease-in-out infinite}
+  @keyframes blink{50%{opacity:0.4}}
+
+  /* --- hero de resultado principal --- */
+  .hero{
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line);
+    padding:32px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:'';position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity:0.5;
+  }
+  .metric{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+  .metric .n{
+    font-family:var(--mono);
+    font-size:64px;
+    font-weight:300;
+    letter-spacing:-0.03em;
+    line-height:1;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .metric .u{
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--ink-dim);
+    letter-spacing:0.1em;
+  }
+  .metric-label{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:8px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .metric-label::before{
+    content:'';width:12px;height:1px;background:var(--ink-dim);display:inline-block;
+  }
+
+  /* --- botones --- */
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  button{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--line-2);
+    padding:10px 18px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+    font-weight:500;
+  }
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:disabled{opacity:0.4;cursor:not-allowed}
+  button.primary{
+    background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600;
+  }
+  button.primary:hover{background:transparent;color:var(--accent)}
+  button.ghost{border-color:var(--line);color:var(--ink-dim)}
+
+  /* --- formulario de orden --- */
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{
+    font-family:var(--mono);font-size:10px;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--ink-dim);
+  }
+  .field input, .field textarea{
+    background:var(--panel-2);
+    border:1px solid var(--line-2);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:9px 11px;
+    outline:none;
+    transition:border-color 0.15s ease;
+    width:100%;
+  }
+  .field input:focus, .field textarea:focus{border-color:var(--acc2)}
+  .field input::placeholder{color:var(--ink-faint)}
+  .field.autoset input{border-color:var(--accent)}
+  .grid-orden{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:640px){.grid-orden{grid-template-columns:1fr}}
+  .drop{
+    border:1px dashed var(--line-2);
+    background:var(--panel-2);
+    padding:16px;
+    text-align:center;
+    cursor:pointer;
+    transition:all 0.15s ease;
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);
+  }
+  .drop:hover, .drop.drag{border-color:var(--acc2);color:var(--acc2)}
+  .hint{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:4px}
+  .pill{
+    display:inline-block;font-family:var(--mono);font-size:10px;
+    padding:2px 8px;border:1px solid var(--line-2);color:var(--ink-dim);
+    margin-left:8px;
+  }
+  .pill.ok{border-color:var(--accent);color:var(--accent)}
+  .pill.bad{border-color:var(--bad);color:var(--bad)}
+
+  /* --- ícono de ayuda con tooltip --- */
+  .help{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:15px;height:15px;margin-left:7px;
+    border:1px solid var(--line-2);border-radius:50%;
+    font-family:var(--mono);font-size:10px;line-height:1;color:var(--ink-dim);
+    cursor:help;position:relative;vertical-align:middle;
+    user-select:none;flex:none;
+    transition:border-color .15s ease,color .15s ease;
+  }
+  .help:hover,.help:focus{border-color:var(--acc2);color:var(--acc2);outline:none}
+  .help::after{
+    content:attr(data-tip);
+    position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);
+    width:250px;max-width:70vw;
+    background:var(--panel-2);color:var(--ink);
+    border:1px solid var(--line-2);
+    padding:9px 11px;
+    font-family:var(--sans,inherit);font-size:11.5px;font-weight:400;
+    line-height:1.5;letter-spacing:normal;text-transform:none;
+    white-space:normal;text-align:left;
+    box-shadow:0 6px 24px rgba(0,0,0,0.4);
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .15s ease;z-index:50;
+  }
+  .help::before{
+    content:"";position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);
+    border:5px solid transparent;border-bottom-color:var(--line-2);
+    opacity:0;visibility:hidden;transition:opacity .15s ease;z-index:51;
+  }
+  .help:hover::after,.help:focus::after,
+  .help:hover::before,.help:focus::before{opacity:1;visibility:visible}
+  /* si el tooltip queda cerca del borde derecho, no se sale */
+  .card-title .help::after{left:auto;right:0;transform:none}
+  .card-title .help::before{left:auto;right:5px;transform:none}
+
+  /* --- diagnóstico ONT --- */
+  .diag-head{font-family:var(--mono);font-size:12px;margin-bottom:12px;color:var(--ink)}
+  .diag-dev{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);line-height:1.7;margin-bottom:12px}
+  .diag-dev b{color:var(--ink)}
+  .finding{
+    border-left:3px solid var(--line-2);
+    background:var(--panel-2);
+    padding:10px 12px;margin-bottom:8px;
+  }
+  .finding .f-top{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .finding .f-sev{
+    font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;
+    padding:2px 7px;border:1px solid currentColor;
+  }
+  .finding .f-title{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .finding .f-area{font-family:var(--mono);font-size:9px;color:var(--ink-faint);margin-left:auto;text-transform:uppercase;letter-spacing:0.1em}
+  .finding .f-body{font-size:11.5px;color:var(--ink-dim);line-height:1.6}
+  .finding .f-body .lbl{color:var(--ink-faint);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.1em;margin-right:6px}
+  .finding.critico{border-left-color:var(--bad)}      .finding.critico .f-sev{color:var(--bad)}
+  .finding.alto{border-left-color:var(--bad)}          .finding.alto .f-sev{color:var(--bad)}
+  .finding.medio{border-left-color:var(--warn)}        .finding.medio .f-sev{color:var(--warn)}
+  .finding.bajo{border-left-color:var(--acc2)}         .finding.bajo .f-sev{color:var(--acc2)}
+  .diag-verdict{
+    font-family:var(--mono);font-size:13px;font-weight:600;
+    padding:10px 12px;margin-bottom:14px;border:1px solid var(--line-2);
+  }
+  .diag-verdict.bad{border-color:var(--bad);color:var(--bad);background:rgba(248,81,73,0.06)}
+  .diag-verdict.warn{border-color:var(--warn);color:var(--warn);background:rgba(227,179,65,0.06)}
+  .diag-verdict.ok{border-color:var(--accent);color:var(--accent);background:rgba(63,185,80,0.06)}
+
+  /* --- barra de progreso / gauge --- */
+  .gauge{
+    height:6px;background:var(--panel-2);
+    border:1px solid var(--line);
+    overflow:hidden;position:relative;
+    margin-top:12px;
+  }
+  .gauge > span{
+    display:block;height:100%;
+    background:linear-gradient(90deg, var(--accent), var(--acc2));
+    width:0%;
+    transition:width 0.3s ease;
+  }
+  .gauge.up > span{background:linear-gradient(90deg, var(--acc3), var(--acc2))}
+
+  /* --- filas de datos --- */
+  .kv{
+    display:grid;grid-template-columns:auto 1fr auto;
+    gap:12px;align-items:center;
+    padding:8px 0;
+    border-bottom:1px dashed var(--line-2);
+    font-family:var(--mono);
+    font-size:12px;
+  }
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--ink-dim);letter-spacing:0.05em}
+  .kv .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+  .kv .tag{
+    font-size:9px;letter-spacing:0.15em;text-transform:uppercase;
+    padding:2px 6px;border:1px solid var(--line-2);color:var(--ink-faint);
+  }
+  .kv .tag.ok{color:var(--accent);border-color:rgba(63,185,80,0.4)}
+  .kv .tag.warn{color:var(--warn);border-color:rgba(227,179,65,0.4)}
+  .kv .tag.bad{color:var(--bad);border-color:rgba(248,81,73,0.4)}
+
+  /* --- gráfico en vivo --- */
+  .chart{
+    height:120px;background:var(--panel-2);
+    border:1px solid var(--line);
+    position:relative;margin-top:16px;
+    padding:8px;
+  }
+  .chart canvas{width:100%;height:100%;display:block}
+  .chart-label{
+    position:absolute;top:8px;left:12px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--ink-faint);letter-spacing:0.15em;text-transform:uppercase;
+  }
+
+  /* --- resumen final --- */
+  .verdict{
+    padding:24px;text-align:center;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    font-family:var(--mono);
+  }
+  .verdict.pass{border-color:var(--accent);background:linear-gradient(180deg, rgba(63,185,80,0.08), transparent)}
+  .verdict.fail{border-color:var(--bad);background:linear-gradient(180deg, rgba(248,81,73,0.08), transparent)}
+  .verdict .lbl{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px}
+  .verdict .out{font-size:24px;font-weight:600;letter-spacing:0.02em}
+  .verdict.pass .out{color:var(--accent)}
+  .verdict.fail .out{color:var(--bad)}
+
+  /* --- vistas / pantallas --- */
+  .view{display:none}
+  .view.active{display:block}
+
+  /* pantalla de bienvenida / orden */
+  .welcome{max-width:760px;margin:40px auto 0}
+  .welcome .lead{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.24em;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px;
+  }
+  .welcome h1{font-size:22px;font-weight:600;letter-spacing:-0.01em;margin-bottom:6px}
+  .welcome p.sub{color:var(--ink-dim);font-size:13px;margin-bottom:24px}
+
+  /* menú de modos */
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:0 auto}
+  @media (max-width:720px){.menu-grid{grid-template-columns:1fr}}
+  .mode-card{
+    background:var(--panel);border:1px solid var(--line);
+    padding:28px 24px;cursor:pointer;position:relative;
+    transition:border-color 0.2s ease, transform 0.1s ease;
+    display:flex;flex-direction:column;gap:10px;min-height:200px;
+  }
+  .mode-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .mode-card .mc-idx{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--ink-faint);
+  }
+  .mode-card .mc-name{font-size:19px;font-weight:600;letter-spacing:-0.01em}
+  .mode-card .mc-desc{color:var(--ink-dim);font-size:12.5px;line-height:1.6;flex:1}
+  .mode-card .mc-go{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+    color:var(--accent);margin-top:8px;
+  }
+  .mode-card.adv{border-color:var(--line-2)}
+  .mode-card.adv:hover{border-color:var(--acc2)}
+  .mode-card.adv .mc-go{color:var(--acc2)}
+
+  /* resumen de orden en el encabezado de la app */
+  .orden-chip{
+    font-family:var(--mono);font-size:11px;color:var(--ink-dim);
+    display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+  }
+  .orden-chip b{color:var(--ink);font-weight:600}
+  .modo-badge{
+    font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
+    padding:3px 10px;border:1px solid var(--line-2);color:var(--ink-dim);
+  }
+  .modo-badge.gen{border-color:var(--accent);color:var(--accent)}
+  .modo-badge.adv{border-color:var(--acc2);color:var(--acc2)}
+
+  /* ocultar tarjetas avanzadas en modo general */
+  main.modo-general .adv-only{display:none !important}
+
+  /* --- log terminal --- */
+  .log{
+    font-family:var(--mono);font-size:11px;line-height:1.7;
+    color:var(--ink-dim);
+    max-height:200px;overflow-y:auto;
+    padding-right:8px;
+  }
+  .log > div{padding:2px 0}
+  .log .t{color:var(--ink-faint);margin-right:8px}
+  .log .ok{color:var(--accent)}
+  .log .bad{color:var(--bad)}
+  .log .warn{color:var(--warn)}
+
+  /* --- footer --- */
+  footer{
+    max-width:1400px;margin:40px auto 0;padding:16px 24px;
+    border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:10px;
+    color:var(--ink-faint);letter-spacing:0.15em;text-transform:uppercase;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--panel)}
+  ::-webkit-scrollbar-thumb{background:var(--line-2)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--ink-faint)}
+
+  /* --- impresión: convertir a esquema claro legible en papel --- */
+  @media print{
+    :root{
+      --bg:#fff; --panel:#fff; --panel-2:#f7f7f7;
+      --line:#ccc; --line-2:#999;
+      --ink:#111; --ink-dim:#444; --ink-faint:#777;
+      --accent:#127a2e; --warn:#8a6d1c; --bad:#b3261e;
+      --acc2:#1a4d80; --acc3:#5a2e8a;
+    }
+    body{background:#fff !important;color:#111 !important}
+    header{position:static;border-bottom:2px solid #000;background:#fff !important;backdrop-filter:none}
+    .brand-mark::before{animation:none}
+    .brand-mark{border-color:#000}
+    main{padding:16px 0}
+    .hero,.card,.verdict{
+      background:#fff !important;
+      border:1px solid #999 !important;
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+    .card.fail{
+      border:2px solid #b3261e !important;
+      background:#fff5f5 !important;
+    }
+    .card.fail::before{
+      background:#b3261e !important;
+    }
+    .card.warn{
+      border:2px solid #8a6d1c !important;
+    }
+    .card.warn::before{
+      background:#8a6d1c !important;
+    }
+    .hero::after{display:none}
+    .row{page-break-inside:avoid}
+    .actions,.chart,.gauge,#log,footer .actions{display:none !important}
+    .card:has(#log){display:none}
+    button{display:none}
+    .status.run{animation:none}
+    .metric .n{font-size:36px}
+    /* botón detener / exportar etc. no van en la impresión */
+    #btn-start,#btn-stop,#btn-print{display:none}
+    .card-title{border-bottom:1px solid #999}
+    .kv{border-bottom:1px dotted #999}
+    /* fuerza los colores impresos aun si el navegador quiere ahorrar tinta */
+    *{
+      -webkit-print-color-adjust:exact !important;
+      print-color-adjust:exact !important;
+    }
+    @page{margin:1.5cm}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ PANTALLA DE ACCESO ============ -->
+<div id="gate" style="position:fixed;inset:0;z-index:9999;background:var(--bg,#0d1117);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:380px;width:100%;text-align:center">
+    <div style="width:54px;height:54px;border:2px solid var(--accent,#3fb950);margin:0 auto 20px;display:flex;align-items:center;justify-content:center">
+      <div style="width:28px;height:28px;background:var(--accent,#3fb950)"></div>
+    </div>
+    <div style="font-family:var(--mono,monospace);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-dim,#9198a1)">Departamento de Red de Acceso</div>
+    <h1 style="font-size:22px;margin:8px 0 4px;color:var(--ink,#e6edf3)">Revisión de Servicio</h1>
+    <p style="color:var(--ink-dim,#9198a1);font-size:13px;margin-bottom:24px">Ingrese la clave de acceso para continuar.</p>
+    <input type="password" id="gate-pass" placeholder="Clave de acceso" autocomplete="off"
+      style="width:100%;padding:12px 14px;background:var(--panel,#161b22);border:1px solid var(--line,#30363d);color:var(--ink,#e6edf3);font-size:15px;text-align:center;letter-spacing:0.1em;outline:none">
+    <button id="gate-btn" style="width:100%;margin-top:12px;padding:12px;background:var(--accent,#3fb950);color:#0d1117;border:none;font-weight:600;font-size:14px;cursor:pointer">Entrar</button>
+    <div id="gate-err" style="color:var(--bad,#f85149);font-size:12px;margin-top:12px;min-height:16px"></div>
+  </div>
+</div>
+
+
+<header>
+  <div class="top">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">
+        <div class="k">Departamento de Red de Acceso</div>
+        <div class="n">Revisión de Servicio</div>
+      </div>
+    </div>
+    <div class="meta">
+      <span><span class="dot pending" id="dot-status"></span><span id="txt-status">Listo</span></span>
+      <span id="txt-fecha"></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ VISTA 0: PÁGINA PRINCIPAL ============ -->
+  <div class="view" id="view-home">
+    <div class="welcome" style="text-align:center;margin-top:60px">
+      <div class="lead" style="text-align:center">Departamento de Red de Acceso · Coopelesca R.L.</div>
+      <h1 style="font-size:26px">Revisión de Servicio</h1>
+      <p class="sub">Seleccione una opción para comenzar.</p>
+    </div>
+    <div class="menu-grid">
+      <div class="mode-card" id="home-revisar">
+        <div class="mc-idx">01</div>
+        <div class="mc-name">Revisar Servicio</div>
+        <div class="mc-desc">
+          Realizar una revisión completa del servicio de un asociado: cargar la orden,
+          medir velocidad, latencia, analizar el ONT y registrar los resultados.
+        </div>
+        <div class="mc-go">Comenzar →</div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- ============ VISTA 1: ADJUNTAR ORDEN ============ -->
+  <div class="view active" id="view-orden">
+    <div class="welcome">
+      <div class="lead">Departamento de Red de Acceso</div>
+      <h1>Revisión de Servicio</h1>
+      <p class="sub">Para comenzar, adjunte el PDF de la orden de trabajo. Los datos se leen automáticamente.</p>
+
+      <div class="card">
+        <div class="card-title">
+          <span><span class="idx">0</span> Orden de trabajo<span class="help" tabindex="0" data-tip="Datos del asociado extraídos del PDF de la orden: cuadrilla, asociado, producto y número de equipo (URP).">?</span></span>
+          <span class="status" id="st-orden">Sin datos</span>
+        </div>
+
+        <div class="drop" id="pdf-drop">
+          Adjuntar PDF de la orden
+          <div class="hint">Arrastre el archivo aquí o haga clic para seleccionar</div>
+          <div class="hint" id="pdf-name">Ningún archivo cargado</div>
+        </div>
+        <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
+        <div class="hint" id="pdf-status" style="margin-top:8px">
+          Los datos se extraen automáticamente del PDF. Puede corregir cualquier campo a mano.
+        </div>
+
+        <div class="grid-orden" style="margin-top:18px">
+          <div class="field" id="f-cuadrilla">
+            <label>N.º de cuadrilla</label>
+            <input type="text" id="o-cuadrilla" placeholder="—" autocomplete="off">
+          </div>
+          <div class="field" id="f-urp">
+            <label>N.º de equipo (URP)</label>
+            <input type="text" id="o-urp" placeholder="—" autocomplete="off">
+          </div>
+          <div class="field" id="f-cliente" style="grid-column:1/-1">
+            <label>Asociado</label>
+            <input type="text" id="o-cliente" placeholder="—" autocomplete="off">
+          </div>
+          <div class="field" id="f-producto" style="grid-column:1/-1">
+            <label>Producto</label>
+            <input type="text" id="o-producto" placeholder="—" autocomplete="off">
+          </div>
+          <div class="field" id="f-clase" style="grid-column:1/-1">
+            <label>Clase de servicio</label>
+            <input type="text" id="o-clase" placeholder="—" autocomplete="off">
+          </div>
+          <div class="field" id="f-velocidad" style="grid-column:1/-1">
+            <label>Velocidad contratada</label>
+            <input type="text" id="o-velocidad" placeholder="—" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:22px">
+          <button class="primary" id="btn-continuar">Continuar →</button>
+          <button id="btn-omitir">Omitir orden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ VISTA 2: MENÚ DE MODOS ============ -->
+  <div class="view" id="view-menu">
+    <div class="welcome">
+      <div class="lead">Seleccione el tipo de revisión</div>
+      <h1>¿Qué desea realizar?</h1>
+      <p class="sub" id="menu-sub">Orden cargada. Elija una de las dos opciones.</p>
+    </div>
+    <div class="menu-grid">
+      <div class="mode-card" id="card-general">
+        <div class="mc-idx">01 · Básico</div>
+        <div class="mc-name">Información general</div>
+        <div class="mc-desc">
+          Prueba rápida: velocidad de bajada y subida, latencia y los datos de la orden.
+          Ideal para una revisión estándar del servicio.
+        </div>
+        <div class="mc-go">Comenzar →</div>
+      </div>
+      <div class="mode-card adv" id="card-avanzado">
+        <div class="mc-idx">02 · Completo</div>
+        <div class="mc-name">Avanzado</div>
+        <div class="mc-desc">
+          Todas las pruebas: velocidad, latencia, DNS, bufferbloat, calidad por caso de uso,
+          IP pública, carga de páginas, arranque de video y registro detallado. Incluye el
+          análisis del log del ONT para detectar problemas del servicio.
+        </div>
+        <div class="mc-go">Comenzar →</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:24px">
+      <button id="btn-volver-orden">← Volver a la orden</button>
+    </div>
+  </div>
+
+  <!-- ============ VISTA 3: PANEL DE PRUEBAS ============ -->
+  <div class="view" id="view-app">
+
+  <!-- Barra de contexto: orden + modo -->
+  <section class="row" style="margin-bottom:16px">
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div class="orden-chip" id="orden-resumen">Sin datos de orden</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="modo-badge" id="modo-badge">—</span>
+        <button id="btn-menu">Cambiar modo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- POTENCIA ÓPTICA (solo modo avanzado): ingresar antes de las pruebas -->
+  <section class="row adv-only" style="margin-bottom:16px">
+    <div class="card" id="card-optica">
+      <div class="card-title">
+        <span><span class="idx">✳</span> Potencia óptica<span class="help" tabindex="0" data-tip="Ingrese la potencia óptica de recepción (Rx) medida en el ONT, en dBm. El rango normal va aprox. de -8 a -27 dBm; por debajo de -25/-27 dBm indica señal débil. Este dato se guarda junto con la revisión.">?</span></span>
+        <span class="status" id="st-optica">Requerido</span>
+      </div>
+      <div class="row g2" style="margin:0;align-items:end">
+        <div class="field" id="f-optica">
+          <label>Potencia óptica Rx (dBm) — obligatorio</label>
+          <input type="number" step="0.01" id="o-optica" placeholder="Ej: -21.35" autocomplete="off" inputmode="decimal">
+        </div>
+        <div class="hint" id="optica-hint">
+          Obligatorio: ingrese el valor medido en el ONT antes de iniciar. Rango normal: -8 a -27 dBm.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HERO: acción principal -->
+  <section class="hero row" style="grid-template-columns:1fr auto;gap:32px;align-items:center;margin-bottom:24px">
+    <div>
+      <div class="metric-label">Estado del servicio</div>
+      <div class="metric">
+        <span class="n" id="hero-val">—</span>
+        <span class="u">Mbps</span>
+      </div>
+      <div style="color:var(--ink-dim);font-size:12px;margin-top:8px" id="hero-sub">Presione iniciar para comenzar el revisión.</div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btn-start">Iniciar revisión</button>
+      <button class="ghost" id="btn-stop" disabled>Detener</button>
+    </div>
+  </section>
+
+  <!-- Fila principal: bajada, subida y cumplimiento -->
+  <section class="row g3">
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">01</span> Bajada<span class="help" tabindex="0" data-tip="Velocidad de descarga (bajada): qué tan rápido llegan los datos desde Internet hacia el asociado. Se mide con varias conexiones a la vez durante unos segundos y se reporta el valor estable, como en Speedtest/Cloudflare.">?</span></span>
+        <span class="status" id="st-down">En espera</span>
+      </div>
+      <div class="metric">
+        <span class="n" id="v-down">0.00</span>
+        <span class="u">Mbps</span>
+      </div>
+      <div class="gauge"><span id="g-down"></span></div>
+      <div class="chart" style="margin-top:20px">
+        <div class="chart-label">Muestreo en vivo</div>
+        <canvas id="c-down"></canvas>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Velocidad</span><span class="v" id="d-est">—</span><span class="tag">Mbps</span></div>
+        <div class="kv"><span class="k">Promedio</span><span class="v" id="d-avg">—</span><span class="tag">Mbps</span></div>
+        <div class="kv"><span class="k">Transferido</span><span class="v" id="d-total">—</span><span class="tag">MB</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">02</span> Subida<span class="help" tabindex="0" data-tip="Velocidad de subida: qué tan rápido puede el asociado enviar datos hacia Internet (importante para videollamadas, respaldos y cámaras). Se reporta el valor estable de la fase sostenida.">?</span></span>
+        <span class="status" id="st-up">En espera</span>
+      </div>
+      <div class="metric">
+        <span class="n" id="v-up">0.00</span>
+        <span class="u">Mbps</span>
+      </div>
+      <div class="gauge up"><span id="g-up"></span></div>
+      <div class="chart" style="margin-top:20px">
+        <div class="chart-label">Muestreo en vivo</div>
+        <canvas id="c-up"></canvas>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Velocidad</span><span class="v" id="u-est">—</span><span class="tag">Mbps</span></div>
+        <div class="kv"><span class="k">Promedio</span><span class="v" id="u-avg">—</span><span class="tag">Mbps</span></div>
+        <div class="kv"><span class="k">Transferido</span><span class="v" id="u-total">—</span><span class="tag">MB</span></div>
+      </div>
+    </div>
+
+    <div class="card adv-only">
+      <div class="card-title">
+        <span><span class="idx">03</span> Cumplimiento<span class="help" tabindex="0" data-tip="Compara la velocidad de bajada medida contra la velocidad contratada en la orden, y calcula el porcentaje cumplido. Verde si alcanza al menos el 80% de lo contratado.">?</span></span>
+        <span class="status" id="st-cumpl">En espera</span>
+      </div>
+      <div class="metric" style="margin-top:8px">
+        <span class="n" id="c-pct">—</span>
+      </div>
+      <div style="margin-top:12px">
+        <div class="kv"><span class="k">Contratada</span><span class="v" id="c-contr">—</span><span class="tag">MB</span></div>
+        <div class="kv"><span class="k">Medida</span><span class="v" id="c-medido">—</span><span class="tag">Mbps</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fila de latencias: latencia + DNS + estabilidad -->
+  <section class="row g3">
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">04</span> Latencia<span class="help" tabindex="0" data-tip="Tiempo de ida y vuelta de un paquete (ping), en milisegundos. Menor es mejor. Incluye jitter (variación del ping) y pérdida de paquetes. Alta latencia afecta juegos y llamadas.">?</span></span>
+        <span class="status" id="st-lat">En espera</span>
+      </div>
+      <div class="metric">
+        <span class="n" id="v-lat">—</span>
+        <span class="u">ms</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Mínima</span><span class="v" id="l-min">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Máxima</span><span class="v" id="l-max">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Jitter</span><span class="v" id="l-jit">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Pérdida</span><span class="v" id="l-loss">—</span><span class="tag">%</span></div>
+      </div>
+    </div>
+
+    <div class="card adv-only">
+      <div class="card-title">
+        <span><span class="idx">05</span> DNS<span class="help" tabindex="0" data-tip="Tiempo que tarda en resolverse un nombre de dominio (ej. google.com) a su dirección IP, usando DNS sobre HTTPS de Cloudflare y Google. Un DNS lento hace que las páginas &quot;tarden en empezar a cargar&quot;.">?</span></span>
+        <span class="status" id="st-dns">En espera</span>
+      </div>
+      <div class="metric">
+        <span class="n" id="v-dns">—</span>
+        <span class="u">ms</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Cloudflare</span><span class="v" id="d-cf">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Google</span><span class="v" id="d-gg">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Dominio</span><span class="v" id="d-dom" style="font-size:10px">google.com</span><span class="tag">A</span></div>
+      </div>
+    </div>
+
+    <div class="card adv-only">
+      <div class="card-title">
+        <span><span class="idx">06</span> Estabilidad<span class="help" tabindex="0" data-tip="Ping sostenido durante 20 segundos para detectar picos y microcortes intermitentes. Ideal para quejas de que 'la conexión se cae a ratos'.">?</span></span>
+        <span class="status" id="st-est">En espera</span>
+      </div>
+      <div class="metric">
+        <span class="n" id="e-live">—</span>
+        <span class="u">ms</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Mínimo</span><span class="v" id="e-min">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Máximo</span><span class="v" id="e-max">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Picos</span><span class="v" id="e-picos">—</span><span class="tag">n</span></div>
+        <div class="kv"><span class="k">Pérdida</span><span class="v" id="e-perd">—</span><span class="tag">%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fila: latencia bajo carga + IPv6 -->
+  <section class="row g2 adv-only">
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">07</span> Latencia bajo carga<span class="help" tabindex="0" data-tip="Mide cuánto sube la latencia mientras se satura el enlace, por separado durante la descarga y durante la subida, para saber en qué sentido se degradan las llamadas y juegos.">?</span></span>
+        <span class="status" id="st-latc">En espera</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">Base (reposo)</span><span class="v" id="lc-base">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Durante descarga</span><span class="v" id="lc-down">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Durante subida</span><span class="v" id="lc-up">—</span><span class="tag">ms</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">08</span> IPv6<span class="help" tabindex="0" data-tip="Verifica si el servicio tiene IPv6 funcionando además de IPv4.">?</span></span>
+        <span class="status" id="st-net">En espera</span>
+      </div>
+      <div style="margin-top:16px">
+        <div class="kv"><span class="k">IPv6</span><span class="v" id="n-ipv6">—</span><span class="tag">activo</span></div>
+        <div class="kv"><span class="k">IP pública</span><span class="v" id="n-ipv4" style="font-size:11px">—</span><span class="tag">IPv4</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fila inferior: calidad + IP pública -->
+  <section class="row g2 adv-only">
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">09</span> Calidad<span class="help" tabindex="0" data-tip="Valoración global según velocidad, latencia, jitter y pérdida, clasificada por caso de uso (navegación, streaming, videollamada, juegos).">?</span></span>
+        <span class="status" id="st-q">En espera</span>
+      </div>
+      <div style="margin-top:8px">
+        <div class="kv"><span class="k">Videollamadas</span><span class="v" id="q-video">—</span><span class="tag" id="q-video-t">—</span></div>
+        <div class="kv"><span class="k">Streaming 4K</span><span class="v" id="q-stream">—</span><span class="tag" id="q-stream-t">—</span></div>
+        <div class="kv"><span class="k">Gaming</span><span class="v" id="q-game">—</span><span class="tag" id="q-game-t">—</span></div>
+        <div class="kv"><span class="k">Teletrabajo</span><span class="v" id="q-work">—</span><span class="tag" id="q-work-t">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">10</span> IP pública<span class="help" tabindex="0" data-tip="Dirección IP pública del servicio, su ubicación aproximada y el proveedor (ISP) según servicios externos de geolocalización.">?</span></span>
+        <span class="status" id="st-ip">En espera</span>
+      </div>
+      <div style="margin-top:8px">
+        <div class="kv"><span class="k">Dirección</span><span class="v" id="ip-addr" style="font-size:11px">—</span><span class="tag">IPv4</span></div>
+        <div class="kv"><span class="k">Ubicación</span><span class="v" id="ip-loc" style="font-size:11px">—</span><span class="tag">geo</span></div>
+        <div class="kv"><span class="k">ISP</span><span class="v" id="ip-isp" style="font-size:11px">—</span><span class="tag">ASN</span></div>
+        <div class="kv"><span class="k">Listas negras</span><span class="v" id="ip-rbl">—</span><span class="tag" id="ip-rbl-t">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Nueva fila: carga de páginas y video, registro -->
+  <section class="row g3 adv-only">
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">11</span> Carga de páginas<span class="help" tabindex="0" data-tip="Tiempo en abrir sitios comunes (Google, YouTube, etc.). Refleja la experiencia real de navegación, no solo la velocidad bruta.">?</span></span>
+        <span class="status" id="st-web">En espera</span>
+      </div>
+      <div id="web-list" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">12</span> Video<span class="help" tabindex="0" data-tip="Tiempo de arranque de un video (buffering inicial). Indica si el streaming se ve fluido o con cortes al iniciar.">?</span></span>
+        <span class="status" id="st-vid">En espera</span>
+      </div>
+      <div class="metric" style="margin-top:8px">
+        <span class="n" id="v-vid">—</span>
+        <span class="u">ms</span>
+      </div>
+      <div style="color:var(--ink-dim);font-size:11px;margin-top:8px">
+        Tiempo hasta primer frame de YouTube. Bajo 3 s = óptimo.
+      </div>
+      <div style="margin-top:12px">
+        <div class="kv"><span class="k">Manifest</span><span class="v" id="vid-m">—</span><span class="tag">ms</span></div>
+        <div class="kv"><span class="k">Segmento inicial</span><span class="v" id="vid-s">—</span><span class="tag">ms</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="idx">13</span> Registro<span class="help" tabindex="0" data-tip="Bitácora en vivo de todo lo que hace la revisión, paso a paso. Útil para ver detalles o diagnosticar si algo falla.">?</span></span>
+        <span class="status">Live</span>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- DIAGNÓSTICO ONT (solo modo avanzado): analizar log del servicio -->
+  <section class="row adv-only" style="margin-top:16px">
+    <div class="card" id="card-ont">
+      <div class="card-title">
+        <span><span class="idx">14</span> Análisis de log del servicio (ONT)<span class="help" tabindex="0" data-tip="Lee el log del equipo del asociado (ONT Nokia) y detecta problemas: pérdida de señal óptica, niveles bajos, cortes de energía, reinicios, Wi-Fi, DNS, etc., con causa probable y acción recomendada.">?</span></span>
+        <span class="status" id="st-ont">Sin log</span>
+      </div>
+      <div class="row g2" style="margin:0;align-items:start">
+        <div>
+          <div class="drop" id="ont-drop">
+            Adjuntar log del servicio a revisar (.txt / .log)
+            <div class="hint">Arrastre el archivo aquí o haga clic para seleccionar</div>
+            <div class="hint" id="ont-name">Ningún log cargado</div>
+          </div>
+          <input type="file" id="ont-input" accept=".txt,.log,text/plain" style="display:none">
+          <div class="hint" id="ont-hint" style="margin-top:8px">
+            El sistema lee el log del ONT y reporta qué problemas encontró (óptica, energía, reinicios, Wi-Fi, DHCP, etc.), con la causa probable y la acción recomendada.
+          </div>
+        </div>
+        <div id="ont-result">
+          <div class="hint" style="color:var(--ink-faint)">Aún no se ha analizado ningún log.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Verdict + acciones finales -->
+  <section class="row g2" style="margin-top:16px">
+    <div class="verdict" id="verdict">
+      <div class="lbl">Resultado general</div>
+      <div class="out" id="verdict-out">— Pendiente —</div>
+      <div style="color:var(--ink-dim);font-size:11px;margin-top:8px" id="verdict-sub">Ejecute las pruebas para obtener el resultado.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Exportar</span><span class="status">Datos</span></div>
+      <div class="actions" style="margin-top:8px">
+        <button id="btn-print">Imprimir / PDF</button>
+      </div>
+      <div id="excel-status" class="hint" style="margin-top:10px">—</div>
+      <input type="hidden" id="excel-url" value="https://script.google.com/macros/s/AKfycbwy1wj4budHv3iFpJK4oIaKVkLvdZ6V6tbN_aiOVC6tF5KdmxV4pcF1738MmouPDw0l/exec">
+      <input type="hidden" id="excel-auto" value="1">
+      <div style="color:var(--ink-dim);font-size:11px;margin-top:8px;font-family:var(--mono)">
+        Los datos se suben automáticamente a la nube al terminar la revisión.
+      </div>
+    </div>
+  </section>
+
+  </div><!-- /view-app -->
+
+</main>
+
+<footer>
+  <span>Coopelesca · Red de Acceso</span>
+  <span id="build">v1.0 · autocontenido por Creado por Fauricio Miranda</span>
+</footer>
+
+<!-- Librerías para lectura de PDF y generación de Excel (CDN, con degradación elegante) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // Worker de pdf.js (necesario para extraer texto)
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<script>
+/* =============================================================
+   Revisión de servicio — HTML puro, sin dependencias externas
+   Motor: fetch a endpoints públicos con medición por ventanas
+============================================================= */
+
+/* ===== CLAVE DE ACCESO =====
+   Cambie el valor entre comillas por la clave que desee.
+   Nota: es una barrera básica para uso interno, no seguridad fuerte. */
+const CLAVE_ACCESO = 'cuadrillasacceso';
+
+(function controlAcceso(){
+  const gate = document.getElementById('gate');
+  const inp  = document.getElementById('gate-pass');
+  const btn  = document.getElementById('gate-btn');
+  const err  = document.getElementById('gate-err');
+
+  // Si ya entró antes en este navegador, no volver a pedir
+  try{ if(sessionStorage.getItem('accesoOK')==='1' || localStorage.getItem('accesoOK')==='1'){ gate.style.display='none'; return; } }catch(e){}
+
+  function intentar(){
+    if((inp.value||'') === CLAVE_ACCESO){
+      try{ sessionStorage.setItem('accesoOK','1'); localStorage.setItem('accesoOK','1'); }catch(e){}
+      gate.style.display='none';
+    }else{
+      err.textContent = 'Clave incorrecta.';
+      inp.value=''; inp.focus();
+    }
+  }
+  btn.addEventListener('click', intentar);
+  inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter') intentar(); });
+  setTimeout(()=>{ try{ inp.focus(); }catch(e){} }, 100);
+})();
+
+const CFG = {
+  // Endpoints de descarga en orden de preferencia — el primero que responda se usa
+  // Cada uno con distinta política de CORS y tamaño de archivo
+  urlDown: [
+    {n:'Cloudflare', u:'https://speed.cloudflare.com/__down?bytes=25000000', reabrir:true},
+    {n:'Hetzner',    u:'https://speed.hetzner.de/100MB.bin', reabrir:true},
+    {n:'OVH',        u:'https://proof.ovh.net/files/100Mb.dat', reabrir:true},
+    {n:'ThinkBroadband', u:'https://ipv4.download.thinkbroadband.com/50MB.zip', reabrir:true}
+  ],
+  urlUp:   'https://speed.cloudflare.com/__up',
+  urlUpAlt: 'https://httpbin.org/post',
+  urlPing: 'https://speed.cloudflare.com/__down?bytes=0',
+  urlPingAlt: 'https://1.1.1.1/cdn-cgi/trace',   // respaldo si Cloudflare speed falla
+  urlPingAlt2: 'https://dns.google/resolve?name=a.com&type=A',
+  dohCF: 'https://cloudflare-dns.com/dns-query',
+  dohGG: 'https://dns.google/resolve',
+  downChunkBytes: 25_000_000,
+  upChunkBytes: 5_000_000,
+  velMinMbps: 10,
+  subMinMbps: 2,
+  lossMax: 2,
+  jitterMax: 40,
+  latMax: 100,
+  dnsMax: 200,
+  bbWarn: 30,
+  bbBad: 100,
+  hilos: 6,
+  segundosDown: 12,
+  segundosUp: 10,
+  descarteSeg: 2,
+  pingsCount: 20,
+  pingTimeout: 3000,   // ms: descarta pings que tarden más (evita contaminar la latencia)
+  dnsTimeout: 4000,    // ms: timeout para consultas DNS
+  urlIpPub: 'https://api.ipify.org?format=json',
+  urlIpGeo: 'https://ipapi.co/json/',
+  sitiosCarga: [
+    {n:'Google',    u:'https://www.google.com/favicon.ico'},
+    {n:'YouTube',   u:'https://www.youtube.com/favicon.ico'},
+    {n:'Facebook',  u:'https://www.facebook.com/favicon.ico'},
+    {n:'Coopelesca',u:'https://www.coopelesca.com/favicon.ico'}
+  ],
+  cargaMax: 1500,
+  videoMax: 3000,
+  // --- pruebas nuevas ---
+  estabilidadSeg: 20,        // duración de la prueba de estabilidad (s)
+  cumplimientoMin: 80,       // % mínimo de velocidad contratada para "PASA"
+  urlIpv6: 'https://api64.ipify.org?format=json',   // devuelve IPv6 si hay
+  urlIpv4Only: 'https://api.ipify.org?format=json'
+};
+
+/* --- estado global --- */
+const R = {
+  fecha: '',
+  orden: { cuadrilla:'', cliente:'', producto:'', urp:'', archivo:'', claseServicio:'', velocidadContratada:'' },
+  opticaManual: null,
+  ont: null,
+  down: null, up: null, lat: null, dns: null, bb: null, quality: null,
+  latCargaDown: null, latCargaUp: null,   // latencia bajo carga por sentido
+  estabilidad: null,                      // consistencia sostenida
+  cumplimiento: null,                     // % velocidad vs contratada
+  ipv6: null, cgnat: null, mtu: null,     // ipv6, cgnat, mtu
+  info: {},
+  log: [],
+  pass: 0, fail: 0, warn: 0, total: 0,
+  detalles: []
+};
+let corriendo = false;
+let stop = false;
+let MODO = 'avanzado';   // 'general' | 'avanzado'
+let PING_URL = null;     // endpoint de ping activo (se elige al medir latencia)
+
+/* --- helpers UI --- */
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => (n==null||isNaN(n))?'—':Number(n).toFixed(d);
+
+// fetch con límite de tiempo: si tarda más de "ms", aborta y lanza error.
+// Evita que una petición colgada (ej. servidor lento) contamine las mediciones.
+async function fetchTimeout(url, opts={}, ms=3000){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), ms);
+  try{
+    const r = await fetch(url, {...opts, signal: ctrl.signal});
+    return r;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+// Devuelve la URL de ping activa con parámetro anti-caché, respetando si ya trae '?'
+function pingUrl(){
+  const u = PING_URL || CFG.urlPing;
+  return u + (u.includes('?')?'&':'?') + '_=' + Math.random();
+}
+
+// Velocidad "estable" al estilo Speedtest/Cloudflare: descarta el arranque (rampa),
+// toma la fase sostenida y devuelve su MEDIANA. Es el número que reportan esos
+// servicios como resultado principal (no el pico ni el P90, que quedan más altos).
+function velocidadEstable(muestras){
+  // muestras: array de {seg, mbps}. Ya vienen filtradas por descarteSeg y mbps>0.
+  const v = muestras.map(m=>m.mbps).filter(x=>x>0).sort((a,b)=>a-b);
+  if(v.length===0) return null;
+  if(v.length<4){
+    // pocos datos: promedio simple
+    return v.reduce((a,b)=>a+b,0)/v.length;
+  }
+  // Recorta el 10% inferior y superior (quita rampa de arranque y picos atípicos),
+  // y promedia el núcleo central sostenido — equivalente a la media recortada.
+  const lo = Math.floor(v.length*0.10);
+  const hi = Math.ceil(v.length*0.90);
+  const nucleo = v.slice(lo, hi);
+  return nucleo.reduce((a,b)=>a+b,0)/nucleo.length;
+}
+const now = () => {
+  const d = new Date();
+  return d.toLocaleTimeString('es-CR',{hour12:false});
+};
+function setStatus(elId, text, cls){
+  const el = $(elId); if(!el) return;
+  el.textContent = text;
+  el.className = 'status ' + (cls||'');
+  // Aplicar clase de resaltado al card contenedor
+  const card = el.closest('.card');
+  if(card){
+    card.classList.remove('fail','warn');
+    if(cls==='bad') card.classList.add('fail');
+    else if(cls==='warn') card.classList.add('warn');
+  }
+}
+function log(msg, cls=''){
+  const line = document.createElement('div');
+  line.innerHTML = `<span class="t">${now()}</span><span class="${cls}">${msg}</span>`;
+  const l = $('log');
+  l.appendChild(line);
+  l.scrollTop = l.scrollHeight;
+  R.log.push(`[${now()}] ${msg.replace(/<[^>]+>/g,'')}`);
+}
+function gauge(id, val, max){
+  const pct = Math.min(100, (val/max)*100);
+  $(id).style.width = pct + '%';
+}
+function verdict(nombre, estado, det){
+  R.total++;
+  if(estado==='PASA') R.pass++;
+  else if(estado==='NO PASA') R.fail++;
+  else R.warn++;
+  R.detalles.push({nombre, estado, det});
+}
+
+/* --- canvas para gráfico en vivo --- */
+class LiveChart{
+  constructor(id){
+    this.c = document.getElementById(id);
+    this.ctx = this.c.getContext('2d');
+    this.data = [];
+    this.max = 100;
+    this.resize();
+    window.addEventListener('resize', ()=>this.resize());
+  }
+  resize(){
+    const dpr = window.devicePixelRatio||1;
+    const r = this.c.getBoundingClientRect();
+    this.c.width = r.width*dpr; this.c.height = r.height*dpr;
+    this.ctx.scale(dpr,dpr);
+    this.w = r.width; this.h = r.height;
+    this.draw();
+  }
+  push(v){
+    this.data.push(v);
+    if(this.data.length>80) this.data.shift();
+    this.max = Math.max(this.max, v*1.1);
+    this.draw();
+  }
+  reset(){this.data=[];this.max=100;this.draw()}
+  draw(){
+    const {ctx,w,h,data,max} = this;
+    ctx.clearRect(0,0,w,h);
+    // grid
+    ctx.strokeStyle = '#1c2632'; ctx.lineWidth = 1;
+    for(let i=1;i<4;i++){
+      ctx.beginPath();
+      ctx.moveTo(0, (h/4)*i); ctx.lineTo(w, (h/4)*i); ctx.stroke();
+    }
+    if(data.length<2) return;
+    // línea
+    const step = w/(data.length-1);
+    ctx.beginPath();
+    data.forEach((v,i)=>{
+      const x = i*step;
+      const y = h - (v/max)*h*0.9 - h*0.05;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = '#3fb950'; ctx.lineWidth = 1.5; ctx.stroke();
+    // fill
+    ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath();
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'rgba(63,185,80,0.25)');
+    g.addColorStop(1,'rgba(63,185,80,0)');
+    ctx.fillStyle = g; ctx.fill();
+  }
+}
+let chartDown, chartUp;
+
+/* =============================================================
+   Pruebas
+============================================================= */
+
+// Guarda datos básicos y la fecha del informe.
+function pintarInfo(){
+  R.info.ua = navigator.userAgent;
+  $('txt-fecha').textContent = new Date().toLocaleString('es-CR');
+}
+
+// PING (GET pequeño contra Cloudflare __down bytes=0). Mide RTT sobre conexión
+// ya establecida (keep-alive) y reporta la MEDIANA, como los medidores comerciales.
+async function probarPing(){
+  setStatus('st-lat','Midiendo','run');
+  log('Latencia: iniciando ' + CFG.pingsCount + ' pruebas...');
+
+  // Elegir un endpoint de ping que responda (Cloudflare puede fallar en algunas redes)
+  PING_URL = CFG.urlPing;
+  const candidatos = [CFG.urlPing, CFG.urlPingAlt, CFG.urlPingAlt2];
+  for(const c of candidatos){
+    try{
+      const sep=c.includes('?')?'&':'?';
+      const r = await fetchTimeout(c+sep+'_=' + Math.random(), {cache:'no-store'}, 3000);
+      if(r.ok || r.type==='opaque'){ PING_URL = c; break; }
+    }catch(e){}
+  }
+  if(PING_URL!==CFG.urlPing) log('Latencia: usando endpoint de respaldo para ping','warn');
+
+  // Calentamiento: 3 peticiones para abrir la conexión TLS (no se miden).
+  for(let w=0; w<3; w++){
+    try{ await fetchTimeout(pingUrl(), {cache:'no-store'}, CFG.pingTimeout); }catch(e){}
+  }
+
+  const rtts = [];
+  let perdidos = 0;
+  for(let i=0;i<CFG.pingsCount;i++){
+    if(stop) break;
+    const url = pingUrl();
+    const t0 = performance.now();
+    try{
+      const r = await fetchTimeout(url,{cache:'no-store'}, CFG.pingTimeout);
+      await r.arrayBuffer();
+      const rtt = performance.now()-t0;
+      // Descarta respuestas anómalas (servidor lento puntual): no reflejan el enlace
+      if(rtt <= CFG.pingTimeout) rtts.push(rtt);
+    }catch(e){ perdidos++; }
+    await new Promise(r=>setTimeout(r,80));
+  }
+  if(rtts.length===0){
+    R.lat = {avg:null,min:null,max:null,jit:null,loss:100};
+    $('v-lat').textContent = '—';
+    setStatus('st-lat','Sin respuesta','bad');
+    log('Latencia: sin respuesta','bad');
+    verdict('Latencia','NO PASA','sin respuesta');
+    return;
+  }
+  // Mediana: valor central, robusto ante picos puntuales del navegador.
+  const rttOrd = [...rtts].sort((a,b)=>a-b);
+  const mediana = rttOrd[Math.floor(rttOrd.length/2)];
+  const min = rttOrd[0];
+  // Para jitter y máximo, descarta el peor 10% (outliers de GC/sockets del navegador).
+  const corte = Math.max(1, Math.floor(rttOrd.length*0.9));
+  const rttLimpio = rttOrd.slice(0, corte);
+  const media = rttLimpio.reduce((a,b)=>a+b,0)/rttLimpio.length;
+  const max = rttLimpio[rttLimpio.length-1];
+  // Jitter: variación media entre muestras consecutivas (como IPDV/RFC 3393).
+  let difs = 0;
+  for(let i=1;i<rtts.length;i++) difs += Math.abs(rtts[i]-rtts[i-1]);
+  const jit = rtts.length>1 ? difs/(rtts.length-1) : 0;
+  const loss = (perdidos/CFG.pingsCount)*100;
+  // Se reporta la MEDIANA como "latencia" (coincide con Cloudflare/Ookla).
+  R.lat = {avg:mediana, media, min, max, jit, loss, rawMax: rttOrd[rttOrd.length-1]};
+  $('v-lat').textContent = fmt(mediana,0);
+  $('l-min').textContent = fmt(min,0);
+  $('l-max').textContent = fmt(max,0);
+  $('l-jit').textContent = fmt(jit,1);
+  $('l-loss').textContent = fmt(loss,1);
+  const okLat  = mediana <= CFG.latMax;
+  const okJit  = jit <= CFG.jitterMax;
+  const okLoss = loss <= CFG.lossMax;
+  const todo = okLat && okJit && okLoss;
+  setStatus('st-lat', todo?'OK':'Fuera', todo?'ok':'warn');
+  log(`Latencia: ${fmt(mediana,0)} ms (mediana), jitter ${fmt(jit,1)} ms, pérdida ${fmt(loss,1)}%`, todo?'ok':'warn');
+  verdict('Latencia promedio', okLat  ? 'PASA' : 'NO PASA', `${fmt(mediana,0)} ms (máx ${CFG.latMax})`);
+  verdict('Jitter',            okJit  ? 'PASA' : 'NO PASA', `${fmt(jit,1)} ms (máx ${CFG.jitterMax})`);
+  verdict('Pérdida de paquetes', okLoss ? 'PASA' : 'NO PASA', `${fmt(loss,1)}% (máx ${CFG.lossMax}%)`);
+}
+
+// DNS via DoH (con timeout y calentamiento para no medir el handshake TLS)
+async function probarDns(){
+  setStatus('st-dns','Midiendo','run');
+  log('DNS: resolviendo por DoH...');
+  async function medir(url){
+    const t0 = performance.now();
+    try{
+      const r = await fetchTimeout(url, {
+        headers:{'accept':'application/dns-json'},
+        cache:'no-store'
+      }, CFG.dnsTimeout);
+      await r.text();
+      const dt = performance.now()-t0;
+      return dt <= CFG.dnsTimeout ? dt : null;
+    }catch(e){ return null; }
+  }
+  // Calentamiento: abre la conexión TLS a cada resolver (no se mide)
+  try{ await medir(CFG.dohCF + '?name=warmup.com&type=A'); }catch{}
+  try{ await medir(CFG.dohGG + '?name=warmup.com&type=A'); }catch{}
+  if(stop) return;
+
+  // Mide 3 veces cada uno y toma el mejor (más estable ante picos puntuales)
+  const mejor = async (url)=>{
+    const t=[];
+    for(let i=0;i<3;i++){ if(stop) break; const v=await medir(url+'&_='+Math.random()); if(v!=null) t.push(v); }
+    return t.length? Math.min(...t) : null;
+  };
+  const tCF = await mejor(CFG.dohCF + '?name=google.com&type=A');
+  if(stop) return;
+  const tGG = await mejor(CFG.dohGG + '?name=google.com&type=A');
+  const vals = [tCF,tGG].filter(x=>x!=null);
+  if(vals.length===0){
+    R.dns = {cf:null,gg:null,avg:null};
+    setStatus('st-dns','Sin respuesta','bad');
+    log('DNS: falló consulta','bad');
+    verdict('DNS','NO PASA','sin respuesta');
+    return;
+  }
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  R.dns = {cf:tCF,gg:tGG,avg};
+  $('v-dns').textContent = fmt(avg,0);
+  $('d-cf').textContent = fmt(tCF,0);
+  $('d-gg').textContent = fmt(tGG,0);
+  const ok = avg<=CFG.dnsMax;
+  setStatus('st-dns', ok?'OK':'Lento', ok?'ok':'warn');
+  log(`DNS: promedio ${fmt(avg,0)} ms (CF ${fmt(tCF,0)}, Google ${fmt(tGG,0)})`, ok?'ok':'warn');
+  verdict('DNS', ok?'PASA':'NO PASA', `${fmt(avg,0)} ms`);
+}
+
+// Descarga: prueba proveedores en cascada, elige el primero que responda
+async function probarBajada(){
+  setStatus('st-down','Probando fuentes','run');
+  chartDown.reset();
+
+  // Paso 1: encontrar un proveedor que responda
+  let elegido = null;
+  for(const p of CFG.urlDown){
+    if(stop) break;
+    try{
+      const ctrl = new AbortController();
+      const timeout = setTimeout(()=>ctrl.abort(), 4000);
+      const r = await fetch(p.u + (p.u.includes('?')?'&':'?') + '_test=' + Math.random(), {
+        cache:'no-store', signal: ctrl.signal
+      });
+      clearTimeout(timeout);
+      if(r.ok){
+        // leer un poco para confirmar que fluye
+        const reader = r.body.getReader();
+        const {value} = await reader.read();
+        try{ reader.cancel(); }catch{}
+        if(value && value.length > 0){
+          elegido = p;
+          break;
+        }
+      }
+    }catch(e){
+      log(`Bajada: ${p.n} no disponible (${e.name==='AbortError'?'timeout':'error'})`,'warn');
+    }
+  }
+
+  if(!elegido){
+    setStatus('st-down','Sin fuentes','bad');
+    log('Bajada: ningún proveedor de descarga respondió','bad');
+    verdict('Bajada','NO PASA','sin fuente disponible');
+    return;
+  }
+  log(`Bajada: usando ${elegido.n}, ${CFG.hilos} conexiones paralelas, ${CFG.segundosDown} s...`);
+  setStatus('st-down','Midiendo','run');
+
+  const shared = {bytes:0, stop:false, activos:0};
+  const controllers = [];
+
+  const worker = async () => {
+    shared.activos++;
+    while(!shared.stop){
+      let ctrl;
+      try{
+        ctrl = new AbortController();
+        controllers.push(ctrl);
+        const sep = elegido.u.includes('?')?'&':'?';
+        const r = await fetch(elegido.u + sep + '_=' + Math.random(), {
+          cache:'no-store', signal: ctrl.signal
+        });
+        if(!r.ok){ await new Promise(r=>setTimeout(r,300)); continue; }
+        const reader = r.body.getReader();
+        while(!shared.stop){
+          const {done, value} = await reader.read();
+          if(done) break;
+          shared.bytes += value.length;
+        }
+      }catch(e){
+        if(!shared.stop) await new Promise(r=>setTimeout(r,200));
+      }
+    }
+    shared.activos--;
+  };
+
+  for(let i=0;i<CFG.hilos;i++) worker();
+  await new Promise(r=>setTimeout(r,300));
+
+  const samples = [];
+  let prev = 0, prevT = performance.now();
+  const tInicio = performance.now();
+  for(let s=0; s<CFG.segundosDown*2; s++){
+    if(stop){shared.stop=true;break;}
+    await new Promise(r=>setTimeout(r,500));
+    const now = performance.now();
+    const dt = (now-prevT)/1000;
+    const delta = shared.bytes - prev;
+    prev = shared.bytes; prevT = now;
+    const mbps = (delta*8)/dt/1_000_000;
+    const seg = (now-tInicio)/1000;
+    samples.push({seg,mbps});
+    $('v-down').textContent = fmt(mbps,2);
+    gauge('g-down', mbps, Math.max(100,mbps*1.2));
+    chartDown.push(mbps);
+  }
+  shared.stop = true;
+  controllers.forEach(c=>{try{c.abort();}catch{}});
+  const espera = performance.now();
+  while(shared.activos>0 && performance.now()-espera<2000){
+    await new Promise(r=>setTimeout(r,50));
+  }
+
+  const utiles = samples.filter(s=>s.seg>CFG.descarteSeg && s.mbps>0);
+  if(utiles.length===0){
+    R.down = null;
+    setStatus('st-down','Sin datos','bad');
+    log(`Bajada (${elegido.n}): sin muestras válidas`,'bad');
+    verdict('Bajada','NO PASA','sin datos');
+    return;
+  }
+  const vals = utiles.map(s=>s.mbps).sort((a,b)=>a-b);
+  const p90 = vals[Math.floor(0.9*(vals.length-1))];
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const max = vals[vals.length-1];
+  const estable = velocidadEstable(utiles);   // valor estilo Cloudflare/Speedtest
+  R.down = {estable, p90, avg, max, totalMB: shared.bytes/(1024*1024), samples, fuente: elegido.n};
+  $('v-down').textContent = fmt(estable,2);
+  $('d-est').textContent = fmt(estable,2);
+  $('d-avg').textContent = fmt(avg,2);
+  $('d-total').textContent = fmt(shared.bytes/(1024*1024),1);
+  $('hero-val').textContent = fmt(estable,1);
+  $('hero-sub').textContent = `Bajada ${fmt(estable,1)} Mbps · fuente: ${elegido.n}`;
+  const ok = estable>=CFG.velMinMbps;
+  setStatus('st-down', ok?'OK':'Bajo', ok?'ok':'warn');
+  log(`Bajada (${elegido.n}): ${fmt(estable,2)} Mbps (estable), promedio ${fmt(avg,2)}, pico ${fmt(max,2)}, ${fmt(shared.bytes/(1024*1024),1)} MB`, ok?'ok':'warn');
+  verdict('Bajada', ok?'PASA':'NO PASA', `${fmt(estable,2)} Mbps desde ${elegido.n}`);
+}
+
+// Subida: POST contra Cloudflare /__up midiendo bytes CONFIRMADOS por el servidor.
+// Se cuenta cada envío solo cuando la respuesta llega (r.ok), que es cuando el
+// cuerpo terminó de subir por el enlace. Datos aleatorios => no comprimibles.
+async function probarSubida(){
+  setStatus('st-up','Midiendo','run');
+  chartUp.reset();
+  log(`Subida: ${CFG.hilos} conexiones paralelas, ${CFG.segundosUp} s...`);
+
+  const shared = {bytes:0, stop:false, activos:0, confirmados:0, endpoint:CFG.urlUp};
+  const controllers = [];
+
+  // Chunk moderado y COMPLETAMENTE aleatorio (incompresible).
+  // crypto.getRandomValues tiene límite de 65536 bytes por llamada: se llena por partes.
+  const CHUNK = Math.min(CFG.upChunkBytes, 2_000_000); // 2 MB por POST
+  const chunk = new Uint8Array(CHUNK);
+  for(let off=0; off<chunk.length; off+=65536){
+    crypto.getRandomValues(chunk.subarray(off, Math.min(off+65536, chunk.length)));
+  }
+
+  const worker = async () => {
+    shared.activos++;
+    while(!shared.stop){
+      try{
+        const ctrl = new AbortController();
+        controllers.push(ctrl);
+        const r = await fetch(shared.endpoint, {
+          method:'POST',
+          body: chunk,            // ArrayBufferView: el navegador lo sube tal cual
+          signal: ctrl.signal,
+          cache:'no-store'
+        });
+        // Solo se contabiliza cuando el servidor confirma la recepción completa.
+        if(r.ok){ shared.bytes += CHUNK; shared.confirmados++; await r.arrayBuffer().catch(()=>{}); }
+        else if(r.status===403 && shared.endpoint===CFG.urlUp){
+          // Cloudflare rechazó: cambiar al endpoint de respaldo
+          shared.endpoint = CFG.urlUpAlt;
+          log('Subida: usando servidor de respaldo','warn');
+        }
+      }catch(e){
+        if(!shared.stop) await new Promise(r=>setTimeout(r,100));
+      }
+    }
+    shared.activos--;
+  };
+
+  for(let i=0;i<CFG.hilos;i++) worker();
+  // Arranque: no medir hasta que las conexiones estén activas
+  await new Promise(r=>setTimeout(r,300));
+
+  const samples = [];
+  let prev = shared.bytes, prevT = performance.now();
+  const tInicio = performance.now();
+  for(let s=0; s<CFG.segundosUp*2; s++){
+    if(stop){shared.stop=true;break;}
+    await new Promise(r=>setTimeout(r,500));
+    const now = performance.now();
+    const dt = (now-prevT)/1000;
+    const delta = shared.bytes - prev;
+    prev = shared.bytes; prevT = now;
+    const mbps = (delta*8)/dt/1_000_000;
+    samples.push({seg:(now-tInicio)/1000, mbps});
+    $('v-up').textContent = fmt(mbps,2);
+    gauge('g-up', mbps, Math.max(50,mbps*1.2));
+    chartUp.push(mbps);
+  }
+  shared.stop = true;
+  controllers.forEach(c=>{try{c.abort();}catch{}});
+  const espera = performance.now();
+  while(shared.activos>0 && performance.now()-espera<2000){
+    await new Promise(r=>setTimeout(r,50));
+  }
+
+  const utiles = samples.filter(s=>s.seg>CFG.descarteSeg && s.mbps>0);
+  if(utiles.length===0 || shared.confirmados===0){
+    R.up = null;
+    setStatus('st-up','Sin datos','bad');
+    log('Subida: el servidor no aceptó los envíos (posible bloqueo CORS/403). No se pudo medir.','bad');
+    verdict('Subida','NO PASA','no medible en este navegador');
+    return;
+  }
+  const vals = utiles.map(s=>s.mbps).sort((a,b)=>a-b);
+  const p90 = vals[Math.floor(0.9*(vals.length-1))];
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const max = vals[vals.length-1];
+  const estable = velocidadEstable(utiles);   // valor estilo Cloudflare/Speedtest
+  R.up = {estable, p90, avg, max, samples, totalMB: shared.bytes/(1024*1024)};
+  $('v-up').textContent = fmt(estable,2);
+  $('u-est').textContent = fmt(estable,2);
+  $('u-avg').textContent = fmt(avg,2);
+  $('u-total').textContent = fmt(shared.bytes/(1024*1024),1);
+  const ok = estable>=CFG.subMinMbps;
+  setStatus('st-up', ok?'OK':'Bajo', ok?'ok':'warn');
+  log(`Subida: ${fmt(estable,2)} Mbps (estable), promedio ${fmt(avg,2)}, pico ${fmt(max,2)}`, ok?'ok':'warn');
+  verdict('Subida', ok?'PASA':'NO PASA', `${fmt(estable,2)} Mbps`);
+}
+
+// IP pública, geolocalización y reputación
+async function probarIpPublica(){
+  setStatus('st-ip','Consultando','run');
+  log('IP pública: consultando servicios externos...');
+
+  // Paso 1: obtener la IP (solo IP, prueba varios servicios)
+  let ip = null;
+  const proveedoresIp = [
+    {u:'https://api.ipify.org?format=json', k:'ip'},
+    {u:'https://api64.ipify.org?format=json', k:'ip'},
+    {u:'https://ipapi.co/json/', k:'ip'},
+    {u:'https://ifconfig.me/all.json', k:'ip_addr'}
+  ];
+  for(const p of proveedoresIp){
+    if(ip) break;
+    try{
+      const r = await fetch(p.u, {cache:'no-store'});
+      if(!r.ok) continue;
+      const j = await r.json();
+      ip = j[p.k];
+    }catch(e){}
+  }
+
+  if(!ip){
+    R.ip = null;
+    $('ip-addr').textContent = 'sin respuesta';
+    setStatus('st-ip','Sin datos','bad');
+    log('IP pública: ningún servicio respondió (posible bloqueo o límite excedido)','bad');
+    verdict('IP pública','NO PASA','no se pudo obtener');
+    return;
+  }
+
+  R.ip = {ip};
+  $('ip-addr').textContent = ip;
+  log(`IP pública: ${ip}`,'ok');
+  verdict('IP pública detectada','PASA', ip);
+
+  // Paso 2: geolocalización (opcional, no bloquea el flujo si falla)
+  const proveedoresGeo = [
+    `https://ipapi.co/${ip}/json/`,
+    `https://ipwho.is/${ip}`,
+    `https://freeipapi.com/api/json/${ip}`
+  ];
+  let geo = null;
+  for(const url of proveedoresGeo){
+    try{
+      const r = await fetch(url, {cache:'no-store'});
+      if(!r.ok) continue;
+      const j = await r.json();
+      // Cada API usa nombres distintos, los normalizamos
+      geo = {
+        pais:   j.country_name || j.country || '—',
+        ciudad: j.city         || '—',
+        isp:    j.org || j.connection?.isp || j.isp || '—',
+        asn:    j.asn || j.connection?.asn || '—'
+      };
+      if(geo.pais !== '—' || geo.isp !== '—') break;  // sirve
+    }catch(e){}
+  }
+  if(geo){
+    R.ip = {...R.ip, ...geo};
+    $('ip-loc').textContent = (geo.ciudad!=='—'?geo.ciudad+', ':'') + geo.pais;
+    $('ip-isp').textContent = geo.isp;
+    log(`Geolocalización: ${geo.ciudad}, ${geo.pais} — ${geo.isp}`);
+  } else {
+    $('ip-loc').textContent = 'no disponible';
+    $('ip-isp').textContent = 'no disponible';
+    log('Geolocalización: ningún servicio respondió (info no crítica)','warn');
+  }
+
+  // Paso 3: reputación de la IP
+  // NOTA: no se puede consultar Spamhaus desde navegador — bloquean queries
+  // desde DoH público con respuestas envenenadas. En su lugar, ofrecemos
+  // un enlace directo a la verificación oficial + un revisión básico local.
+  R.ip.blacklisted = null;
+  const linkSpamhaus = `https://check.spamhaus.org/results/?query=${ip}`;
+  $('ip-rbl').innerHTML = `<a href="${linkSpamhaus}" target="_blank" style="color:var(--acc2);text-decoration:underline">Verificar</a>`;
+  $('ip-rbl-t').textContent = 'ext';
+  $('ip-rbl-t').className = 'tag';
+  setStatus('st-ip','Info','ok');
+  log(`Reputación: consultar en ${linkSpamhaus}`);
+  // No se emite verdict PASA/NO PASA porque no se pudo verificar automáticamente
+}
+
+// Carga de páginas: mide TTFB + descarga del favicon (proxy razonable del tiempo real)
+async function probarCargaPaginas(){
+  setStatus('st-web','Midiendo','run');
+  log(`Carga de páginas: midiendo ${CFG.sitiosCarga.length} sitios...`);
+  const cont = $('web-list');
+  cont.innerHTML = '';
+  const resultados = [];
+  for(const s of CFG.sitiosCarga){
+    if(stop) break;
+    const row = document.createElement('div');
+    row.className = 'kv';
+    row.innerHTML = `<span class="k">${s.n}</span><span class="v" data-v>—</span><span class="tag" data-t>ms</span>`;
+    cont.appendChild(row);
+    const t0 = performance.now();
+    try{
+      const r = await fetch(s.u + '?_=' + Math.random(), {cache:'no-store', mode:'no-cors'});
+      // Aunque sea no-cors, el fetch mide el RTT completo
+      const ms = performance.now() - t0;
+      resultados.push({sitio:s.n, ms});
+      row.querySelector('[data-v]').textContent = Math.round(ms);
+      const t = row.querySelector('[data-t]');
+      if(ms <= CFG.cargaMax){ t.textContent='OK'; t.className='tag ok'; }
+      else { t.textContent='Lento'; t.className='tag warn'; }
+    }catch(e){
+      row.querySelector('[data-v]').textContent = 'error';
+      row.querySelector('[data-t]').textContent = '×';
+      row.querySelector('[data-t]').className = 'tag bad';
+      resultados.push({sitio:s.n, ms:null});
+    }
+  }
+  R.web = resultados;
+  const validos = resultados.filter(r=>r.ms!=null);
+  if(validos.length===0){
+    setStatus('st-web','Sin datos','bad');
+    log('Carga: no se pudo medir ningún sitio','bad');
+    verdict('Carga de páginas','NO PASA','sin respuesta');
+    return;
+  }
+  const prom = validos.reduce((a,b)=>a+b.ms,0)/validos.length;
+  const okCount = validos.filter(r=>r.ms<=CFG.cargaMax).length;
+  const ok = okCount === validos.length;
+  setStatus('st-web', ok?'OK':(okCount>0?'Parcial':'Lento'), ok?'ok':(okCount>0?'warn':'bad'));
+  log(`Carga de páginas: promedio ${Math.round(prom)} ms, ${okCount}/${validos.length} rápidos`, ok?'ok':'warn');
+  verdict('Carga de páginas', ok?'PASA':(okCount>0?'AVISO':'NO PASA'),
+    `${okCount}/${validos.length} sitios OK, promedio ${Math.round(prom)} ms`);
+}
+
+// Tiempo hasta arrancar un video de YouTube (manifest DASH + primer segmento)
+async function probarVideo(){
+  setStatus('st-vid','Midiendo','run');
+  log('Video: midiendo tiempo hasta primer frame de YouTube...');
+  const t0 = performance.now();
+  let manifestMs = null;
+  let segmentoMs = null;
+  try{
+    // Página de YouTube (favicon es proxy de que el CDN responde)
+    const r1 = await fetch('https://i.ytimg.com/generate_204?_=' + Math.random(),
+                          {cache:'no-store', mode:'no-cors'});
+    manifestMs = performance.now() - t0;
+    // Descarga de un thumbnail (~30-50 KB, aproxima el primer segmento de video)
+    const t1 = performance.now();
+    const r2 = await fetch('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg?_=' + Math.random(),
+                          {cache:'no-store', mode:'no-cors'});
+    segmentoMs = performance.now() - t1;
+    const total = performance.now() - t0;
+    R.video = {manifest: manifestMs, segmento: segmentoMs, total};
+    $('v-vid').textContent = Math.round(total);
+    $('vid-m').textContent = Math.round(manifestMs);
+    $('vid-s').textContent = Math.round(segmentoMs);
+    let est, cls;
+    if(total <= CFG.videoMax){ est='PASA'; cls='ok'; }
+    else if(total <= CFG.videoMax*2){ est='AVISO'; cls='warn'; }
+    else { est='NO PASA'; cls='bad'; }
+    setStatus('st-vid', cls==='ok'?'OK':(cls==='warn'?'Lento':'Malo'), cls);
+    log(`Video: ${Math.round(total)} ms hasta segmento (manifest ${Math.round(manifestMs)}, seg ${Math.round(segmentoMs)})`, cls);
+    verdict('Arranque de video', est, `${Math.round(total)} ms hasta primer frame`);
+  }catch(e){
+    R.video = null;
+    setStatus('st-vid','Sin datos','bad');
+    log('Video: no se pudo medir','bad');
+    verdict('Arranque de video','NO PASA','sin respuesta');
+  }
+}
+
+// Bufferbloat: latencia en reposo vs bajo carga
+async function probarBufferbloat(){
+  return; // Prueba retirada de la interfaz; se mantiene la función vacía por compatibilidad.
+  // eslint-disable-next-line no-unreachable
+  setStatus('st-bb','Midiendo','run');
+  log('Bufferbloat: midiendo latencia en reposo...');
+  const medirPing = async(n=8)=>{
+    const rtts=[];
+    for(let i=0;i<n;i++){
+      if(stop) break;
+      const t0=performance.now();
+      try{
+        const r = await fetchTimeout(pingUrl(),{cache:'no-store'}, CFG.pingTimeout);
+        await r.arrayBuffer();
+        const rtt=performance.now()-t0;
+        if(rtt<=CFG.pingTimeout) rtts.push(rtt);
+      }catch{}
+      await new Promise(r=>setTimeout(r,150));
+    }
+    if(!rtts.length) return null;
+    // mediana (robusta ante un pico puntual)
+    const o=[...rtts].sort((a,b)=>a-b);
+    return o[Math.floor(o.length/2)];
+  };
+  const base = await medirPing(8);
+  if(stop) return;
+  // carga en paralelo mientras medimos — usa el primer proveedor que responda
+  const shared = {stop:false, activos:0};
+  const ctrls=[];
+  const urlBb = R.down?.fuente ? CFG.urlDown.find(x=>x.n===R.down.fuente)?.u : CFG.urlDown[0].u;
+  const url = urlBb || CFG.urlDown[0].u;
+  for(let i=0;i<3;i++){
+    (async()=>{
+      shared.activos++;
+      while(!shared.stop){
+        try{
+          const ctrl=new AbortController(); ctrls.push(ctrl);
+          const sep = url.includes('?')?'&':'?';
+          const r=await fetch(url + sep + '_=' + Math.random(),{cache:'no-store',signal:ctrl.signal});
+          if(!r.ok){ await new Promise(r=>setTimeout(r,300)); continue; }
+          const reader=r.body.getReader();
+          while(!shared.stop){
+            const {done}=await reader.read();
+            if(done) break;
+          }
+        }catch{}
+      }
+      shared.activos--;
+    })();
+  }
+  await new Promise(r=>setTimeout(r,1500));  // deja que la carga tome cuerpo
+  log('Bufferbloat: midiendo con carga...');
+  const carga = await medirPing(10);
+  shared.stop=true;
+  ctrls.forEach(c=>{try{c.abort();}catch{}});
+  const esp = performance.now();
+  while(shared.activos>0 && performance.now()-esp<1500){
+    await new Promise(r=>setTimeout(r,50));
+  }
+
+  if(base==null || carga==null){
+    R.bb = {base,carga,delta:null};
+    setStatus('st-bb','Sin datos','warn');
+    log('Bufferbloat: no medible','warn');
+    verdict('Bufferbloat','AVISO','sin datos');
+    return;
+  }
+  // La latencia bajo carga no puede ser menor que en reposo: si sale negativo
+  // (ruido de medición), se interpreta como 0 (sin aumento apreciable).
+  const delta = Math.max(0, carga - base);
+  R.bb = {base, carga, delta};
+  $('v-bb').textContent = (delta>=0?'+':'')+fmt(delta,0);
+  $('b-idle').textContent = fmt(base,0);
+  $('b-load').textContent = fmt(carga,0);
+  let grado, cls, est;
+  if(delta<=CFG.bbWarn){grado='A'; cls='ok'; est='PASA';}
+  else if(delta<=CFG.bbBad){grado='B'; cls='warn'; est='AVISO';}
+  else {grado='C'; cls='bad'; est='NO PASA';}
+  $('b-grade').textContent = grado;
+  $('b-tag').textContent = grado;
+  $('b-tag').className = 'tag '+cls;
+  setStatus('st-bb', grado, cls);
+  log(`Bufferbloat: reposo ${fmt(base,0)} ms, con carga ${fmt(carga,0)} ms, Δ ${fmt(delta,0)} ms → ${grado}`, cls);
+  verdict('Bufferbloat', est, `+${fmt(delta,0)} ms`);
+}
+
+/* ============================================================
+   PRUEBAS AVANZADAS ADICIONALES
+============================================================ */
+
+// Helper: promedio de N pings (RTT ms), o null
+async function pingProm(n=8, gap=150){
+  const rtts=[];
+  for(let i=0;i<n;i++){
+    if(stop) break;
+    const t0=performance.now();
+    try{
+      const r = await fetchTimeout(pingUrl(),{cache:'no-store'}, CFG.pingTimeout);
+      await r.arrayBuffer();
+      const rtt=performance.now()-t0;
+      if(rtt<=CFG.pingTimeout) rtts.push(rtt);
+    }catch{}
+    await new Promise(r=>setTimeout(r,gap));
+  }
+  return rtts.length? rtts.reduce((a,b)=>a+b,0)/rtts.length : null;
+}
+
+// Helper: genera carga en un sentido ('down' | 'up') y devuelve un controlador para detenerla
+function generarCarga(sentido){
+  const shared={stop:false, activos:0};
+  const ctrls=[];
+  const lanzar = (fn)=>{ shared.activos++; fn().finally(()=>shared.activos--); };
+  if(sentido==='down'){
+    const url = (R.down?.fuente ? CFG.urlDown.find(x=>x.n===R.down.fuente)?.u : CFG.urlDown[0].u) || CFG.urlDown[0].u;
+    for(let i=0;i<3;i++) lanzar(async()=>{
+      while(!shared.stop){
+        try{
+          const ctrl=new AbortController(); ctrls.push(ctrl);
+          const sep=url.includes('?')?'&':'?';
+          const r=await fetch(url+sep+'_='+Math.random(),{cache:'no-store',signal:ctrl.signal});
+          if(!r.ok){ await new Promise(r=>setTimeout(r,300)); continue; }
+          const reader=r.body.getReader();
+          while(!shared.stop){ const {done}=await reader.read(); if(done) break; }
+        }catch{}
+      }
+    });
+  } else {
+    const chunk=new Uint8Array(1_000_000);
+    for(let off=0;off<chunk.length;off+=65536) crypto.getRandomValues(chunk.subarray(off,Math.min(off+65536,chunk.length)));
+    for(let i=0;i<3;i++) lanzar(async()=>{
+      while(!shared.stop){
+        try{
+          const ctrl=new AbortController(); ctrls.push(ctrl);
+          await fetch(CFG.urlUp,{method:'POST',body:chunk,signal:ctrl.signal,cache:'no-store'});
+        }catch{ if(!shared.stop) await new Promise(r=>setTimeout(r,100)); }
+      }
+    });
+  }
+  return {
+    async detener(){
+      shared.stop=true; ctrls.forEach(c=>{try{c.abort();}catch{}});
+      const t=performance.now();
+      while(shared.activos>0 && performance.now()-t<1500) await new Promise(r=>setTimeout(r,50));
+    }
+  };
+}
+
+// 1) Latencia bajo carga separada por sentido (descarga y subida)
+async function probarLatenciaCarga(){
+  setStatus('st-latc','Midiendo','run');
+  log('Latencia bajo carga: midiendo base...');
+  const base = await pingProm(6);
+  if(stop||base==null){ setStatus('st-latc','Sin datos','warn'); return; }
+
+  // Descarga
+  log('Latencia bajo carga: durante DESCARGA...');
+  let cargaD = generarCarga('down');
+  await new Promise(r=>setTimeout(r,1200));
+  const durDown = await pingProm(8);
+  await cargaD.detener();
+  if(stop) return;
+
+  // Subida
+  log('Latencia bajo carga: durante SUBIDA...');
+  let cargaU = generarCarga('up');
+  await new Promise(r=>setTimeout(r,1200));
+  const durUp = await pingProm(8);
+  await cargaU.detener();
+
+  const dDown = (durDown!=null)? durDown-base : null;
+  const dUp   = (durUp!=null)? durUp-base : null;
+  R.latCargaDown = {base, cargado:durDown, delta:dDown};
+  R.latCargaUp   = {base, cargado:durUp,   delta:dUp};
+  $('lc-base').textContent = fmt(base,0);
+  $('lc-down').textContent = dDown!=null? (dDown>=0?'+':'')+fmt(dDown,0) : '—';
+  $('lc-up').textContent   = dUp!=null?   (dUp>=0?'+':'')+fmt(dUp,0)   : '—';
+  const peor = Math.max(dDown??0, dUp??0);
+  let cls = peor<=CFG.bbWarn?'ok':peor<=CFG.bbBad?'warn':'bad';
+  let est = peor<=CFG.bbWarn?'PASA':peor<=CFG.bbBad?'AVISO':'NO PASA';
+  setStatus('st-latc', cls==='ok'?'OK':cls==='warn'?'Elevada':'Alta', cls);
+  log(`Latencia bajo carga: descarga ${dDown!=null?('+'+fmt(dDown,0)):'—'} ms, subida ${dUp!=null?('+'+fmt(dUp,0)):'—'} ms`, cls);
+  verdict('Latencia bajo carga (descarga)', dDown==null?'AVISO':(dDown<=CFG.bbBad?'PASA':'NO PASA'), dDown!=null?`+${fmt(dDown,0)} ms`:'sin datos');
+  verdict('Latencia bajo carga (subida)',   dUp==null?'AVISO':(dUp<=CFG.bbBad?'PASA':'NO PASA'),   dUp!=null?`+${fmt(dUp,0)} ms`:'sin datos');
+}
+
+// 2) Estabilidad / consistencia: ping sostenido, detecta picos y microcortes
+async function probarEstabilidad(){
+  setStatus('st-est','Midiendo','run');
+  log(`Estabilidad: ping sostenido por ${CFG.estabilidadSeg}s...`);
+  const muestras=[]; let perdidos=0;
+  const t0=performance.now();
+  while((performance.now()-t0) < CFG.estabilidadSeg*1000){
+    if(stop) break;
+    const p0=performance.now();
+    try{
+      const r=await fetchTimeout(pingUrl(),{cache:'no-store'}, CFG.pingTimeout);
+      await r.arrayBuffer();
+      const rtt=performance.now()-p0;
+      if(rtt<=CFG.pingTimeout) muestras.push(rtt); else perdidos++;
+    }catch{ perdidos++; }
+    await new Promise(r=>setTimeout(r,250));
+    if(muestras.length){
+      const ult=muestras[muestras.length-1];
+      $('e-live').textContent=fmt(ult,0);
+    }
+  }
+  if(muestras.length===0){
+    R.estabilidad={min:null,max:null,avg:null,picos:0,perdidos,total:0};
+    setStatus('st-est','Sin datos','bad');
+    verdict('Estabilidad','NO PASA','sin respuesta');
+    return;
+  }
+  const min=Math.min(...muestras), max=Math.max(...muestras);
+  const avg=muestras.reduce((a,b)=>a+b,0)/muestras.length;
+  // pico = muestra que supera 2.5x la mediana
+  const ord=[...muestras].sort((a,b)=>a-b);
+  const mediana=ord[Math.floor(ord.length/2)];
+  const picos=muestras.filter(m=>m>mediana*2.5).length;
+  const total=muestras.length+perdidos;
+  const pctPerd=(perdidos/total)*100;
+  R.estabilidad={min,max,avg,mediana,picos,perdidos,total,pctPerd,muestras};
+  $('e-min').textContent=fmt(min,0);
+  $('e-max').textContent=fmt(max,0);
+  $('e-picos').textContent=picos;
+  $('e-perd').textContent=fmt(pctPerd,1);
+  // veredicto: estable si pocos picos y sin pérdidas
+  let cls,est,txt;
+  if(pctPerd>2 || picos>total*0.15){ cls='bad'; est='NO PASA'; txt='Inestable'; }
+  else if(picos>total*0.05 || max>mediana*3){ cls='warn'; est='AVISO'; txt='Irregular'; }
+  else { cls='ok'; est='PASA'; txt='Estable'; }
+  setStatus('st-est',txt,cls);
+  log(`Estabilidad: ${txt} — ${picos} picos, ${fmt(pctPerd,1)}% pérdida en ${total} muestras`,cls);
+  verdict('Estabilidad de conexión', est, `${txt}: ${picos} picos, ${fmt(pctPerd,1)}% pérdida`);
+}
+
+
+// 4) Cumplimiento: velocidad medida vs contratada
+function calcularCumplimiento(){
+  const contr = velocidadMB(R.orden.velocidadContratada);
+  const medido = R.down?.estable;
+  if(!contr || medido==null){
+    R.cumplimiento=null;
+    setStatus('st-cumpl','Sin dato','warn');
+    if($('c-contr')) $('c-contr').textContent = contr? contr+' MB' : '—';
+    if($('c-medido')) $('c-medido').textContent = medido!=null? fmt(medido,1) : '—';
+    if($('c-pct')) $('c-pct').textContent = '—';
+    return;
+  }
+  const pct = (medido/parseFloat(contr))*100;
+  R.cumplimiento = {contratada:parseFloat(contr), medido, pct};
+  $('c-contr').textContent = contr+' MB';
+  $('c-medido').textContent = fmt(medido,1);
+  $('c-pct').textContent = fmt(pct,0)+'%';
+  let cls,est;
+  if(pct>=CFG.cumplimientoMin){ cls='ok'; est='PASA'; }
+  else if(pct>=CFG.cumplimientoMin-20){ cls='warn'; est='AVISO'; }
+  else { cls='bad'; est='NO PASA'; }
+  setStatus('st-cumpl', fmt(pct,0)+'%', cls);
+  log(`Cumplimiento: ${fmt(medido,1)} de ${contr} MB contratados = ${fmt(pct,0)}%`, cls);
+  verdict('Cumplimiento vs contratado', est, `${fmt(pct,0)}% (${fmt(medido,1)}/${contr} MB)`);
+}
+
+// 5) IPv6 + 6) CGNAT
+async function probarIpv6Cgnat(){
+  setStatus('st-net','Comprobando','run');
+  log('IPv6/CGNAT: comprobando...');
+  let ipv6=null, ipv4=null;
+  try{
+    const r=await fetch(CFG.urlIpv6,{cache:'no-store'}); const j=await r.json();
+    if(j.ip && j.ip.includes(':')) ipv6=j.ip; else if(j.ip) ipv4=j.ip;
+  }catch{}
+  if(!ipv4){
+    try{ const r=await fetch(CFG.urlIpv4Only,{cache:'no-store'}); const j=await r.json(); ipv4=j.ip; }catch{}
+  }
+  R.ipv6 = ipv6 ? {activo:true, ip:ipv6} : {activo:false};
+  const ipRef = R.ip?.ip || ipv4;
+  $('n-ipv6').textContent = ipv6 ? 'Sí' : 'No';
+  $('n-ipv4').textContent = ipRef || '—';
+  const cls = ipv6? 'ok':'warn';
+  setStatus('st-net', ipv6?'IPv6 OK':'Solo IPv4', cls);
+  log(`IPv6: ${ipv6?'activo ('+ipv6+')':'no disponible'}`, cls);
+  verdict('IPv6', ipv6?'PASA':'AVISO', ipv6?'activo':'no disponible');
+}
+
+function calcularCalidad(){
+  setStatus('st-q','Calculando','run');
+  const bajada = R.down?.estable ?? R.down?.p90 ?? 0;
+  const subida = R.up?.estable ?? R.up?.p90 ?? 0;
+  const lat = R.lat?.avg ?? 999;
+  const jit = R.lat?.jit ?? 999;
+  const loss = R.lat?.loss ?? 100;
+
+  // Criterios
+  const cases = [
+    ['q-video', 'Videollamadas', bajada>=2 && subida>=1.5 && lat<150 && jit<40 && loss<2],
+    ['q-stream','Streaming 4K',  bajada>=25 && lat<200],
+    ['q-game',  'Gaming',        lat<50 && jit<10 && loss<0.5],
+    ['q-work',  'Teletrabajo',   bajada>=10 && subida>=3 && lat<100]
+  ];
+  let ok=0;
+  cases.forEach(([id,nombre,cond])=>{
+    const el = $(id);
+    const t = $(id+'-t');
+    if(cond){
+      el.textContent = 'Óptimo'; t.textContent='OK'; t.className='tag ok'; ok++;
+    } else {
+      el.textContent = 'Limitado'; t.textContent='!'; t.className='tag warn';
+    }
+  });
+  setStatus('st-q', ok+'/4', ok===4?'ok':(ok>=2?'warn':'bad'));
+  R.quality = {ok, total: cases.length};
+  log(`Calidad: ${ok}/4 casos óptimos`);
+}
+
+/* --- veredicto final --- */
+function calcularVeredicto(){
+  const el = $('verdict');
+  const out = $('verdict-out');
+  const sub = $('verdict-sub');
+  el.classList.remove('pass','fail');
+  if(R.fail===0 && R.total>0){
+    el.classList.add('pass');
+    out.textContent = 'PASA';
+    sub.innerHTML = `<div style="font-size:12px;color:var(--ink-dim);margin-top:8px">${R.pass} pruebas correctas · ${R.warn} avisos</div>`;
+  } else if(R.fail>0){
+    el.classList.add('fail');
+    out.textContent = 'NO PASA';
+    const fallidos = R.detalles.filter(d=>d.estado==='NO PASA');
+    let html = `<div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--bad);margin:16px 0 10px;font-weight:600">Pruebas que no pasaron (${R.fail})</div>`;
+    html += '<div style="text-align:left;max-width:520px;margin:0 auto">';
+    fallidos.forEach(d=>{
+      html += `
+        <div style="display:flex;align-items:baseline;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(248,81,73,0.08);border-left:3px solid var(--bad);font-family:var(--mono);font-size:12px">
+          <span style="color:var(--bad);font-weight:600;min-width:14px">×</span>
+          <span style="color:var(--ink);flex:1"><strong style="font-weight:600">${d.nombre}</strong></span>
+          <span style="color:var(--ink-dim)">${d.det}</span>
+        </div>`;
+    });
+    html += '</div>';
+    if(R.warn>0){
+      const avisos = R.detalles.filter(d=>d.estado==='AVISO');
+      html += `<div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--warn);margin:20px 0 10px;font-weight:600">Avisos (${R.warn})</div>`;
+      html += '<div style="text-align:left;max-width:520px;margin:0 auto">';
+      avisos.forEach(d=>{
+        html += `
+          <div style="display:flex;align-items:baseline;gap:12px;padding:8px 14px;margin-bottom:4px;background:rgba(227,179,65,0.06);border-left:3px solid var(--warn);font-family:var(--mono);font-size:12px">
+            <span style="color:var(--warn);font-weight:600;min-width:14px">!</span>
+            <span style="color:var(--ink);flex:1"><strong style="font-weight:600">${d.nombre}</strong></span>
+            <span style="color:var(--ink-dim)">${d.det}</span>
+          </div>`;
+      });
+      html += '</div>';
+    }
+    html += `<div style="font-size:11px;color:var(--ink-faint);margin-top:16px;font-family:var(--mono)">${R.pass} correctas · ${R.warn} avisos · ${R.fail} fallas</div>`;
+    sub.innerHTML = html;
+  } else {
+    out.textContent = '— Sin datos —';
+    sub.textContent = '';
+  }
+}
+
+/* =============================================================
+   Ejecución
+============================================================= */
+async function ejecutarTodo(){
+  if(corriendo) return;
+
+  // En modo avanzado, la potencia óptica es obligatoria antes de iniciar.
+  if(MODO==='avanzado'){
+    const val = ($('o-optica') && $('o-optica').value || '').trim();
+    if(val==='' || isNaN(parseFloat(val))){
+      const card = $('card-optica');
+      if(card){
+        card.classList.add('fail');
+        card.scrollIntoView({behavior:'smooth', block:'center'});
+        setTimeout(()=>card.classList.remove('fail'), 2500);
+      }
+      const st = $('st-optica');
+      if(st){ st.textContent='Requerido'; st.className='status bad'; }
+      const oi = $('o-optica'); if(oi) oi.focus();
+      if($('optica-hint')) $('optica-hint').textContent =
+        '⚠ Debe ingresar la potencia óptica (dBm) antes de iniciar la revisión.';
+      return;
+    }
+    R.opticaManual = parseFloat(val);
+  }
+
+  corriendo = true; stop = false;
+  R.pass=R.fail=R.warn=R.total=0;
+  R.detalles=[];
+  R.log=[]; $('log').innerHTML='';
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('fail','warn'));
+  R.fecha = new Date().toISOString();
+  $('btn-start').disabled = true;
+  $('btn-stop').disabled = false;
+  $('dot-status').className='dot';
+  $('txt-status').textContent='En curso';
+  log('=== INICIO DEL REVISIÓN ===','ok');
+
+  try{
+    await probarPing();
+    if(MODO==='avanzado'){
+      if(!stop) await probarDns();
+    }
+    if(!stop) await probarBajada();
+    if(!stop) await probarSubida();
+    if(MODO==='avanzado'){
+      if(!stop) calcularCumplimiento();
+      if(!stop) await probarLatenciaCarga();
+      if(!stop) await probarEstabilidad();
+      if(!stop) await probarIpPublica();
+      if(!stop) await probarIpv6Cgnat();
+      if(!stop) await probarCargaPaginas();
+      if(!stop) await probarVideo();
+      if(!stop) calcularCalidad();
+    }
+    calcularVeredicto();
+    log('=== REVISIÓN COMPLETADO ===','ok');
+    $('txt-status').textContent = stop ? 'Detenido' : 'Completado';
+    $('dot-status').className = stop ? 'dot pending' : 'dot';
+    // Subida automática a la nube al terminar
+    if(!stop){
+      subirExcel(true);
+    }
+  } catch(e){
+    log('Error: '+e.message,'bad');
+    $('dot-status').className='dot err';
+    $('txt-status').textContent='Error';
+  } finally {
+    corriendo = false;
+    $('btn-start').disabled = false;
+    $('btn-stop').disabled = true;
+  }
+}
+
+/* =============================================================
+   Exportación
+============================================================= */
+function generarTxt(){
+  const l = [];
+  l.push('='.repeat(64));
+  l.push('   DEPARTAMENTO DE RED DE ACCESO');
+  l.push('   Informe de revisión de servicio');
+  l.push('='.repeat(64));
+  l.push('Fecha: ' + new Date(R.fecha||Date.now()).toLocaleString('es-CR'));
+  l.push('Navegador: ' + R.info.ua);
+  l.push('');
+  l.push('-- Orden de trabajo --');
+  l.push(`  N° cuadrilla:    ${R.orden.cuadrilla||'—'}`);
+  l.push(`  Asociado:        ${R.orden.cliente||'—'}`);
+  l.push(`  Producto:        ${R.orden.producto||'—'}`);
+  l.push(`  N° equipo (URP): ${R.orden.urp||'—'}`);
+  l.push(`  Clase servicio:  ${R.orden.claseServicio||'—'}`);
+  l.push(`  Vel. contratada: ${R.orden.velocidadContratada||'—'}`);
+  if(R.opticaManual!=null && !isNaN(R.opticaManual))
+    l.push(`  Potencia óptica: ${R.opticaManual} dBm`);
+  if(R.orden.archivo) l.push(`  Archivo:         ${R.orden.archivo}`);
+  l.push('');
+  l.push('-- Bajada --');
+  if(R.down){
+    l.push(`  Velocidad:   ${fmt(R.down.estable,2)} Mbps  (mín ${CFG.velMinMbps})`);
+    l.push(`  Promedio:    ${fmt(R.down.avg,2)} Mbps`);
+    l.push(`  P90:         ${fmt(R.down.p90,2)} Mbps`);
+    l.push(`  Pico:        ${fmt(R.down.max,2)} Mbps`);
+    l.push(`  Transferido: ${fmt(R.down.totalMB,1)} MB`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Subida --');
+  if(R.up){
+    l.push(`  Velocidad:   ${fmt(R.up.estable,2)} Mbps  (mín ${CFG.subMinMbps})`);
+    l.push(`  Promedio:    ${fmt(R.up.avg,2)} Mbps`);
+    l.push(`  P90:         ${fmt(R.up.p90,2)} Mbps`);
+    l.push(`  Pico:        ${fmt(R.up.max,2)} Mbps`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Latencia --');
+  if(R.lat){
+    l.push(`  Promedio:    ${fmt(R.lat.avg,1)} ms   (máx ${CFG.latMax})`);
+    l.push(`  Mín/Máx:     ${fmt(R.lat.min,1)} / ${fmt(R.lat.max,1)} ms`);
+    l.push(`  Jitter:      ${fmt(R.lat.jit,1)} ms  (máx ${CFG.jitterMax})`);
+    l.push(`  Pérdida:     ${fmt(R.lat.loss,1)}%  (máx ${CFG.lossMax}%)`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- DNS --');
+  if(R.dns){
+    l.push(`  Cloudflare:  ${fmt(R.dns.cf,0)} ms`);
+    l.push(`  Google:      ${fmt(R.dns.gg,0)} ms`);
+    l.push(`  Promedio:    ${fmt(R.dns.avg,0)} ms   (máx ${CFG.dnsMax})`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Bufferbloat --');
+  if(R.bb){
+    l.push(`  Reposo:      ${fmt(R.bb.base,0)} ms`);
+    l.push(`  Con carga:   ${fmt(R.bb.carga,0)} ms`);
+    l.push(`  Incremento:  ${R.bb.delta>=0?'+':''}${fmt(R.bb.delta,0)} ms`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Cumplimiento vs contratado --');
+  if(R.cumplimiento){
+    l.push(`  Contratada:  ${R.cumplimiento.contratada} MB`);
+    l.push(`  Medida:      ${fmt(R.cumplimiento.medido,1)} Mbps`);
+    l.push(`  Cumple:      ${fmt(R.cumplimiento.pct,0)}%`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Latencia bajo carga --');
+  if(R.latCargaDown||R.latCargaUp){
+    l.push(`  Base (reposo):    ${R.latCargaDown?fmt(R.latCargaDown.base,0):'—'} ms`);
+    l.push(`  Durante descarga: ${R.latCargaDown&&R.latCargaDown.delta!=null?('+'+fmt(R.latCargaDown.delta,0)):'—'} ms`);
+    l.push(`  Durante subida:   ${R.latCargaUp&&R.latCargaUp.delta!=null?('+'+fmt(R.latCargaUp.delta,0)):'—'} ms`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Estabilidad --');
+  if(R.estabilidad && R.estabilidad.total){
+    l.push(`  Mín / Máx:   ${fmt(R.estabilidad.min,0)} / ${fmt(R.estabilidad.max,0)} ms`);
+    l.push(`  Picos:       ${R.estabilidad.picos}`);
+    l.push(`  Pérdida:     ${fmt(R.estabilidad.pctPerd,1)}%`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- IPv6 / CGNAT --');
+  l.push(`  IPv6:        ${R.ipv6?(R.ipv6.activo?('activo ('+R.ipv6.ip+')'):'no disponible'):'—'}`);
+  l.push(`  CGNAT:       ${R.cgnat||'—'}`);
+  l.push('');
+  l.push('-- IP pública --');
+  if(R.ip){
+    l.push(`  Dirección:   ${R.ip.ip||'—'}`);
+    l.push(`  Ubicación:   ${R.ip.ciudad||'—'}, ${R.ip.pais||'—'}`);
+    l.push(`  ISP:         ${R.ip.isp||'—'}`);
+    l.push(`  Listas neg.: ${R.ip.blacklisted===true?'EN LISTA':R.ip.blacklisted===false?'limpia':'no verificable'}`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Carga de páginas --');
+  if(R.web){
+    R.web.forEach(w=>{
+      l.push(`  ${w.sitio.padEnd(12)} ${w.ms!=null?Math.round(w.ms)+' ms':'error'}`);
+    });
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Arranque de video (YouTube) --');
+  if(R.video){
+    l.push(`  Manifest:    ${Math.round(R.video.manifest)} ms`);
+    l.push(`  Segmento:    ${Math.round(R.video.segmento)} ms`);
+    l.push(`  Total:       ${Math.round(R.video.total)} ms  (máx ${CFG.videoMax})`);
+  } else l.push('  sin datos');
+  l.push('');
+  l.push('-- Calidad estimada por caso de uso --');
+  if(R.quality){
+    l.push(`  ${R.quality.ok} de ${R.quality.total} casos óptimos`);
+  }
+  l.push('');
+  l.push('-- Resumen --');
+  l.push(`  Pruebas: ${R.total}   Pasa: ${R.pass}   No pasa: ${R.fail}   Avisos: ${R.warn}`);
+  l.push('');
+  const ver = R.fail===0 ? 'PASA' : 'NO PASA';
+  l.push(`  RESULTADO GENERAL: ${ver}`);
+  if(R.fail>0){
+    l.push('');
+    l.push('  Pruebas que no pasaron:');
+    R.detalles.filter(d=>d.estado==='NO PASA').forEach(d=>{
+      l.push(`    - ${d.nombre}: ${d.det}`);
+    });
+  }
+  if(R.warn>0){
+    l.push('');
+    l.push('  Avisos:');
+    R.detalles.filter(d=>d.estado==='AVISO').forEach(d=>{
+      l.push(`    - ${d.nombre}: ${d.det}`);
+    });
+  }
+  l.push('');
+  if(R.ont){
+    const a = R.ont;
+    l.push('-- Diagnóstico del ONT --');
+    if(a.info.fabricante) l.push(`  Equipo:      ${a.info.fabricante}`);
+    if(a.info.modelo)     l.push(`  Modelo:      ${a.info.modelo}`);
+    if(a.info.serie)      l.push(`  Serie:       ${a.info.serie}`);
+    if(a.info.sw)         l.push(`  Firmware:    ${a.info.sw}`);
+    if(a.info.rxPower!=null) l.push(`  Rx óptico:   ${a.info.rxPower} dBm`);
+    if(a.info.ponEstado)  l.push(`  Estado PON:  ${a.info.ponEstado}`);
+    l.push(`  Diagnóstico: ${ontEstadoTexto(a.estado)}`);
+    if(a.hallazgos.length){
+      l.push('  Hallazgos:');
+      a.hallazgos.forEach(h=>{
+        l.push(`    - [${h.sev.toUpperCase()}] ${h.area} · ${h.titulo}`);
+        l.push(`        ${h.detalle}`);
+        l.push(`        Causa:  ${h.causa}`);
+        l.push(`        Acción: ${h.accion}`);
+      });
+    } else {
+      l.push('  Sin problemas conocidos detectados en el log.');
+    }
+    l.push('');
+  }
+  l.push('-- Registro --');
+  l.push(...R.log);
+  return l.join('\n');
+}
+
+function bajar(nombre, contenido, mime){
+  const blob = (contenido instanceof Blob) ? contenido : new Blob([contenido],{type:mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* =============================================================
+   Orden de trabajo — adjuntar PDF y extraer datos
+============================================================= */
+
+// Lee un PDF y devuelve todo su texto (une líneas conservando saltos)
+async function leerTextoPdf(file){
+  if(!window.pdfjsLib) throw new Error('La librería de PDF no cargó (sin conexión a Internet).');
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let texto = '';
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    // Reconstruir líneas usando la coordenada Y de cada fragmento
+    let lastY = null, linea = '';
+    const lineas = [];
+    for(const it of content.items){
+      const y = it.transform[5];
+      if(lastY!==null && Math.abs(y-lastY) > 2){
+        lineas.push(linea); linea = '';
+      }
+      linea += it.str + ' ';
+      lastY = y;
+    }
+    if(linea.trim()) lineas.push(linea);
+    texto += lineas.join('\n') + '\n';
+  }
+  return texto;
+}
+
+// Busca un valor probando varias etiquetas posibles. Devuelve '' si no encuentra.
+function buscarCampo(texto, etiquetas){
+  const lineas = texto.split('\n');
+  for(const et of etiquetas){
+    const re = new RegExp(et + '\\s*[:\\-]?\\s*(.+)', 'i');
+    for(let i=0;i<lineas.length;i++){
+      const m = lineas[i].match(re);
+      if(m){
+        let val = m[1].trim();
+        // limpiar posible etiqueta siguiente pegada en la misma línea
+        val = val.replace(/\s{2,}.*$/, '').trim();
+        // limpiar restos de puntuación/paréntesis de la etiqueta (p.ej. "(URP):")
+        val = val.replace(/^[)\]:\-\s]+/, '').replace(/^\(?urp\)?[:\-\s]*/i,'').trim();
+        if(val) return val;
+        // si la etiqueta estaba sola, tomar la línea siguiente
+        if(lineas[i+1] && lineas[i+1].trim()) return lineas[i+1].trim();
+      }
+    }
+  }
+  return '';
+}
+
+// Extrae la cuadrilla: línea del encabezado tipo "90 - ACCESO INFO 90"
+function extraerCuadrilla(texto){
+  const lineas = texto.split('\n');
+  for(const l of lineas){
+    const m = l.match(/^\s*(\d{1,4})\s*-\s*ACCESO\b/i);
+    if(m) return m[1];
+  }
+  const m2 = texto.match(/(\d{1,4})\s*-\s*ACCESO/i);
+  return m2 ? m2[1] : '';
+}
+
+// Extrae y limpia el campo "Asociado": "169446 - NOMBRE - 206590959"
+function extraerAsociado(texto){
+  // patrón del valor: <código> - <NOMBRE con letras> - <cédula de 6+ dígitos>
+  const patronValor = /\b(\d{4,7}\s*-\s*[A-ZÁÉÍÓÚÑa-záéíóúñ][^\n]*?-\s*\d{6,})\b/;
+
+  let v = buscarCampo(texto, ['asociado','abonado','cliente','suscriptor']);
+  if(v){
+    // ¿el valor ya vino en la misma línea?
+    const m = v.match(/^\s*\d+\s*-\s*.+?-\s*\d{6,}/);
+    if(m) return m[0].trim();
+    // valor pegado a otras columnas: cortar antes de la siguiente etiqueta
+    let corte = v.split(/\s+(?:Producto|Medidor|Contrato|Carga|Voltaje|Solicitud)\b/i)[0]
+                 .replace(/\s+\d{4,}\s*$/, '').trim();
+    // si el "valor" era en realidad otra etiqueta (columnas separadas), lo descartamos
+    if(!/\d{6,}/.test(corte)) v = '';
+    else return corte;
+  }
+  // Respaldo: buscar en todo el texto la primera línea con forma de asociado
+  const mv = texto.match(patronValor);
+  return mv ? mv[1].trim() : '';
+}
+
+// Quita el código numérico inicial de un valor de tabla:
+// "3948 - 200 MB / 200 MB" -> "200 MB / 200 MB"
+function quitarCodigo(v){
+  if(!v) return v;
+  return v.replace(/^\s*\d{2,6}\s*-\s*/, '').trim();
+}
+
+// Extrae la VELOCIDAD CONTRATADA de la tabla "Composición del producto",
+// fila "Acceso Internet" (ej: "3948 - 200 MB / 200 MB" -> "200 MB / 200 MB").
+function extraerVelocidad(texto){
+  const lineas = texto.split('\n');
+  for(let i=0;i<lineas.length;i++){
+    const l = lineas[i];
+    if(/Acceso\s+Internet/i.test(l)){
+      // valor en la misma línea
+      let m = l.match(/Acceso\s+Internet\s+(.+)/i);
+      let val = m ? m[1].trim() : '';
+      // si no vino en la misma línea, buscar en las siguientes una con "NN MB"
+      if(!/\d+\s*MB/i.test(val)){
+        for(let j=i+1;j<Math.min(i+6,lineas.length);j++){
+          if(/\d+\s*MB/i.test(lineas[j])){ val = lineas[j].trim(); break; }
+        }
+      }
+      // limpiar: cortar antes de columnas siguientes (serie/propiedad)
+      val = val.split(/\s{2,}/)[0].trim();
+      return quitarCodigo(val);
+    }
+  }
+  // respaldo: cualquier "NN MB / NN MB" en el texto
+  const g = texto.match(/\d+\s*MB\s*\/\s*\d+\s*MB/i);
+  return g ? g[0].trim() : '';
+}
+
+// De un texto de velocidad ("200 MB / 200 MB") saca solo el número de bajada en MB.
+function velocidadMB(texto){
+  if(!texto) return '';
+  const m = texto.match(/(\d+)\s*MB/i);
+  return m ? m[1] : '';
+}
+
+// Extrae la CLASE DE SERVICIO de la tabla "Composición del producto",
+// fila "Equipo" (ej: "3641 - CPE FIBRA RESIDENCIAL / ..." -> "CPE FIBRA RESIDENCIAL / ...").
+function extraerClaseServicio(texto){
+  const lineas = texto.split('\n');
+  for(let i=0;i<lineas.length;i++){
+    const l = lineas[i];
+    if(/\bEquipo\b/i.test(l) && /Producto|Acceso|Combo|3641|CPE/i.test(l+lineas[i+1]||'')){
+      let m = l.match(/\bEquipo\s+(.+)/i);
+      let val = m ? m[1].trim() : '';
+      if(!val || /^\s*$/.test(val)){
+        // valor en la línea siguiente
+        if(lineas[i+1]) val = lineas[i+1].trim();
+      }
+      // cortar número de serie (URP.../ALCL...) y propiedad
+      val = val.split(/\s+URP\d/i)[0]
+               .split(/\s+[A-Z0-9]{6,}\s*\/\s*[A-Z0-9]{6,}/)[0]
+               .split(/\s{2,}/)[0].trim();
+      if(val) return quitarCodigo(val);
+    }
+  }
+  // respaldo: línea que contenga "CPE" o "FIBRA RESIDENCIAL"
+  const g = texto.match(/\d+\s*-\s*CPE[^\n]+/i);
+  return g ? quitarCodigo(g[0].split(/\s+URP\d/i)[0].trim()) : '';
+}
+
+// Extrae los campos clave del texto del PDF
+function extraerOrden(texto){
+  const t = texto.replace(/\r/g,'');
+  const vel = extraerVelocidad(t);
+  return {
+    cuadrilla: extraerCuadrilla(t) ||
+               buscarCampo(t, ['n[uú]mero de cuadrilla','no\\.? de cuadrilla','n\\.?°? ?cuadrilla','cuadrilla']),
+    cliente:   extraerAsociado(t),
+    producto:  buscarCampo(t, ['producto','plan','servicio contratado','paquete']),
+    urp:       buscarCampo(t, ['n[uú]mero de equipo','no\\.? de equipo','equipo \\(urp\\)','urp','onu','ont','n\\.?°? ?equipo']),
+    claseServicio: extraerClaseServicio(t),
+    velocidadContratada: vel
+  };
+}
+
+// Refleja R.orden en los inputs (marcando en verde los autocompletados)
+function pintarOrden(auto){
+  $('o-cuadrilla').value = R.orden.cuadrilla || '';
+  $('o-urp').value       = R.orden.urp || '';
+  $('o-cliente').value   = R.orden.cliente || '';
+  $('o-producto').value  = R.orden.producto || '';
+  $('o-clase').value     = R.orden.claseServicio || '';
+  $('o-velocidad').value = R.orden.velocidadContratada || '';
+  if(auto){
+    [['f-cuadrilla','cuadrilla'],['f-urp','urp'],['f-cliente','cliente'],['f-producto','producto'],
+     ['f-clase','claseServicio'],['f-velocidad','velocidadContratada']]
+      .forEach(([fid,k])=>{ $(fid).classList.toggle('autoset', !!R.orden[k]); });
+  }
+  actualizarEstadoOrden();
+}
+
+// Lee inputs -> R.orden (cuando el usuario edita a mano)
+function leerOrdenDeInputs(){
+  R.orden.cuadrilla = $('o-cuadrilla').value.trim();
+  R.orden.urp       = $('o-urp').value.trim();
+  R.orden.cliente   = $('o-cliente').value.trim();
+  R.orden.producto  = $('o-producto').value.trim();
+  R.orden.claseServicio = $('o-clase').value.trim();
+  R.orden.velocidadContratada = $('o-velocidad').value.trim();
+  actualizarEstadoOrden();
+}
+
+function actualizarEstadoOrden(){
+  const o = R.orden;
+  const campos = [o.cuadrilla,o.cliente,o.producto,o.urp,o.claseServicio,o.velocidadContratada];
+  const llenos = campos.filter(Boolean).length;
+  const el = $('st-orden');
+  if(llenos===0){ el.textContent='Sin datos'; el.className='status'; }
+  else if(llenos<campos.length){ el.textContent=`${llenos}/${campos.length} campos`; el.className='status warn'; }
+  else { el.textContent='Completa'; el.className='status ok'; }
+}
+
+/* =============================================================
+   Diagnóstico de logs de ONT Nokia
+============================================================= */
+function analizarLogOnt(texto){
+  const info = {};
+  const pares = {Manufacturer:'fabricante',ProductClass:'modelo',ModelName:'modelo',
+    ModelNumber:'modelo',SerialNumber:'serie',HWVer:'hw',SWVer:'sw',IP:'ip'};
+
+  // La cabecera trae pares "Clave:Valor" separados por \r. Tomamos la parte
+  // previa al primer registro con corchete de severidad.
+  const corteCab = texto.search(/\[(crit|err|alert|warning|notice|info)\]/i);
+  const cabecera = corteCab>0 ? texto.slice(0,corteCab) : texto.slice(0,400);
+  cabecera.split(/[\r\n]+/).forEach(seg=>{
+    const m = seg.match(/^\s*([A-Za-z]+)\s*[:=]\s*(.+?)\s*$/);
+    if(m){ const dst = pares[m[1]]; if(dst && !info[dst]) info[dst] = m[2].trim(); }
+  });
+  if(info.fabricante==='ALCL') info.fabricante='Nokia';
+
+  const T = texto.replace(/\r/g,'');
+  const lineas = T.split('\n');
+  const conteo = (re)=> lineas.filter(l=>re.test(l)).length;
+
+  const hallazgos = [];
+  const add = (sev, area, titulo, detalle, causa, accion, n)=>
+    hallazgos.push({sev, area, titulo, detalle, causa, accion, n:n||0});
+  let n;
+
+  // ===== ÓPTICA / GPON =====
+  n = conteo(/\b(LOS|loss of signal|los detected|signal *fail)\b/i);
+  if(n) add('critico','Óptica','Pérdida de señal óptica (LOS)',
+    `Se detectó pérdida de señal óptica ${n} vez(ces).`,
+    'Fibra desconectada o quebrada, conector sucio, o falla del puerto en el OLT.',
+    'Revisar patch cord y conectores (limpiar), verificar continuidad de la fibra hasta la roseta y el puerto del OLT.', n);
+
+  n = conteo(/\b(dying[ _]?gasp|dgasp)\b/i);
+  if(n) add('alto','Energía','Cortes de energía (dying gasp)',
+    `El ONT reportó ${n} aviso(s) de "dying gasp" (pérdida de alimentación).`,
+    'Cortes de energía eléctrica o adaptador/fuente defectuoso.',
+    'Verificar el tomacorriente y el adaptador de corriente del ONT.', n);
+
+  const rx = T.match(/rx[_ ]?power[^0-9\-]*(-?\d+(?:\.\d+)?)\s*dbm/i);
+  if(rx){
+    const val = parseFloat(rx[1]); info.rxPower = val;
+    let sev = null;
+    if(val < -28) sev='critico'; else if(val < -25) sev='alto';
+    if(sev) add(sev,'Óptica','Nivel óptico de recepción bajo',
+      `Potencia Rx = ${val} dBm (rango recomendado aprox. -8 a -27 dBm).`,
+      'Atenuación alta: distancia, empalmes, conectores sucios o divisor saturado.',
+      'Medir potencia en la roseta, limpiar conectores y revisar empalmes/divisor.', 1);
+  }
+  const tx = T.match(/tx[_ ]?power[^0-9\-]*(-?\d+(?:\.\d+)?)\s*dbm/i);
+  if(tx) info.txPower = parseFloat(tx[1]);
+
+  if(/\bO5\b|operational state|pon.*up|gpon.*up/i.test(T)) info.ponEstado='O5 / operativo';
+  n = conteo(/\b(O1|O2)\b|deactivat|deregister|pon.*down/i);
+  if(n) add('alto','GPON','Inestabilidad del enlace PON',
+    `Transiciones de estado PON o desregistros: ${n}.`,
+    'Enlace óptico inestable, potencia marginal o problema en el OLT.',
+    'Correlacionar con niveles ópticos; revisar fibra y puerto del OLT.', n);
+
+  // ===== REINICIOS / SISTEMA =====
+  const sinNtp = /2026-\d{2}-\d{2}T0[0-4]:[0-5]\d:[0-5]\d[.\d]*\+00:00/.test(T) && /-0[0-9]:00/.test(T);
+  if(sinNtp) add('medio','Sistema','Reinicio reciente del equipo',
+    'El registro muestra un arranque con el reloj sin sincronizar (hora UTC por defecto) seguido de la hora local: señal típica de que el ONT se reinició.',
+    'Corte de energía, reinicio manual, actualización de firmware o watchdog.',
+    'Confirmar estabilidad eléctrica; si los reinicios se repiten, escalar por posible falla de hardware o firmware.', 1);
+
+  n = conteo(/restarting ndk_udhcpd\b/);
+  if(n>=3) add('bajo','Servicios','Reinicios del servicio DHCP',
+    `El servicio DHCP interno (ndk_udhcpd) se reinició ${n} veces.`,
+    'Cambios de configuración aplicados o reinicio general del equipo.',
+    'Normal tras un cambio de configuración; si es repetitivo sin causa, revisar la configuración de LAN/DHCP.', n);
+
+  // ===== WIFI =====
+  const wifiFail = conteo(/wlan_update_associated_entry map_setObj failed/i)
+                 + conteo(/AssociatedDevice.*is not found/i);
+  if(wifiFail>=10) add('bajo','Wi-Fi','Errores al registrar dispositivos Wi-Fi',
+    `Se registraron ${wifiFail} fallos internos al mapear dispositivos asociados al Wi-Fi.`,
+    'Ruido del proceso de gestión TR-069; suele ser cosmético salvo que el asociado reporte caídas de Wi-Fi.',
+    'Si hay quejas de Wi-Fi, revisar canal/interferencia y actualizar firmware; de lo contrario es informativo.', wifiFail);
+
+  // ===== ACCESO =====
+  n = conteo(/login name invalid|invalid.*login|auth.*fail|maxCntAuthTries/i);
+  if(n) add('bajo','Acceso','Intentos de inicio de sesión fallidos',
+    `Se detectaron ${n} intento(s) de acceso inválido(s) a la interfaz del equipo.`,
+    'Usuario o clave incorrectos al ingresar a la configuración (técnico o app móvil).',
+    'Verificar credenciales; sin impacto en el servicio de datos.', n);
+
+  // ===== GESTIÓN / CONFIG =====
+  n = conteo(/could not find (mqtt|uci)|failed to get encrypt/i);
+  if(n) add('bajo','Gestión','Servicios de gestión no listos al arranque',
+    `Mensajes de configuración (mqtt/uci/encrypt) no encontrados: ${n}.`,
+    'Servicios de gestión aún no disponibles durante el arranque; normalmente transitorio.',
+    'Informativo si el equipo quedó operativo; si persiste, revisar el aprovisionamiento.', n);
+
+  n = conteo(/dhcpmon\/dnsmasq id\s+ubus object/i);
+  if(n) add('bajo','LAN/DHCP','Aviso interno de DHCP/DNS',
+    `El gestor no pudo enlazar el objeto de DHCP/DNS ${n} vez(ces).`,
+    'Servicio DHCP/DNS reiniciándose o aún no disponible.',
+    'Verificar que los dispositivos obtienen IP correctamente; suele ser transitorio.', n);
+
+  n = conteo(/ModuleStatus\.json is NOT FOUND/i);
+  if(n) add('bajo','Sistema','Archivo de estado de módulos ausente',
+    `El estado de módulos (ModuleStatus.json) no se encontró ${n} vez(ces).`,
+    'Consulta de estado antes de que el módulo generara el archivo (arranque).',
+    'Informativo; sin impacto si el equipo opera con normalidad.', n);
+
+  // ===== TEMPERATURA (si aparece) =====
+  const temp = T.match(/temperature[^0-9\-]*(\d{2,3})\s*(?:c|°c|celsius)/i);
+  if(temp){
+    const val=parseInt(temp[1],10); info.temp=val;
+    if(val>=80) add('alto','Hardware','Temperatura elevada',
+      `Temperatura reportada: ${val} °C.`,
+      'Ventilación insuficiente o ambiente muy caluroso.',
+      'Reubicar el equipo a un lugar ventilado y sin exposición directa al sol.', 1);
+  }
+
+  // ===== RESUMEN =====
+  const sevCount = {critico:0,alto:0,medio:0,bajo:0};
+  hallazgos.forEach(h=>sevCount[h.sev]++);
+  const severidadLineas = {
+    err: conteo(/^\[err\]/), alert: conteo(/^\[alert\]/), crit: conteo(/^\[crit\]/)
+  };
+  let estado;
+  if(sevCount.critico) estado='problema-critico';
+  else if(sevCount.alto) estado='problema';
+  else if(sevCount.medio) estado='revisar';
+  else if(sevCount.bajo) estado='menor';
+  else estado='sin-problemas';
+
+  return {info, hallazgos, sevCount, severidadLineas, lineas:lineas.length, estado};
+}
+
+// Texto corto del estado para insignias y exportación
+function ontEstadoTexto(estado){
+  return ({
+    'problema-critico':'PROBLEMA CRÍTICO',
+    'problema':'PROBLEMA',
+    'revisar':'REVISAR',
+    'menor':'AVISOS MENORES',
+    'sin-problemas':'SIN PROBLEMAS'
+  })[estado] || '—';
+}
+
+function pintarDiagnosticoOnt(a){
+  const cont = $('ont-result');
+  const i = a.info;
+  const dev = [];
+  if(i.fabricante) dev.push(`Equipo <b>${i.fabricante}</b>`);
+  if(i.modelo) dev.push(`Modelo <b>${i.modelo}</b>`);
+  if(i.serie)  dev.push(`Serie <b>${i.serie}</b>`);
+  if(i.sw)     dev.push(`SW <b>${i.sw}</b>`);
+  if(i.rxPower!=null) dev.push(`Rx <b>${i.rxPower} dBm</b>`);
+  if(i.ponEstado) dev.push(`PON <b>${i.ponEstado}</b>`);
+
+  let vClass = a.estado==='problema-critico'||a.estado==='problema' ? 'bad'
+             : a.estado==='revisar'||a.estado==='menor' ? 'warn' : 'ok';
+  const resumen = a.hallazgos.length
+    ? `${a.hallazgos.length} hallazgo(s): ${a.sevCount.critico} crítico(s), ${a.sevCount.alto} alto(s), ${a.sevCount.medio} medio(s), ${a.sevCount.bajo} menor(es).`
+    : 'No se detectaron problemas conocidos en el log.';
+
+  let html = '';
+  html += `<div class="diag-verdict ${vClass}">${ontEstadoTexto(a.estado)}</div>`;
+  if(dev.length) html += `<div class="diag-dev">${dev.join(' · ')}</div>`;
+  html += `<div class="diag-head">${resumen}</div>`;
+
+  const orden = {critico:0,alto:1,medio:2,bajo:3};
+  a.hallazgos.slice().sort((x,y)=>orden[x.sev]-orden[y.sev]).forEach(h=>{
+    html += `
+      <div class="finding ${h.sev}">
+        <div class="f-top">
+          <span class="f-sev">${h.sev}</span>
+          <span class="f-title">${h.titulo}</span>
+          <span class="f-area">${h.area}</span>
+        </div>
+        <div class="f-body">${h.detalle}</div>
+        <div class="f-body"><span class="lbl">Causa</span>${h.causa}</div>
+        <div class="f-body"><span class="lbl">Acción</span>${h.accion}</div>
+      </div>`;
+  });
+  if(!a.hallazgos.length){
+    html += `<div class="finding bajo"><div class="f-body">El equipo no muestra alarmas ópticas, de energía ni reinicios anómalos en este registro.</div></div>`;
+  }
+  cont.innerHTML = html;
+
+  const st = $('st-ont');
+  st.textContent = ontEstadoTexto(a.estado);
+  st.className = 'status ' + (vClass==='bad'?'bad':vClass==='warn'?'warn':'ok');
+}
+
+async function procesarLogOnt(file){
+  if(!file) return;
+  $('ont-name').textContent = file.name;
+  $('ont-hint').textContent = 'Analizando el log…';
+  try{
+    const texto = await file.text();
+    const a = analizarLogOnt(texto);
+    a.archivo = file.name;
+    R.ont = a;
+    pintarDiagnosticoOnt(a);
+    $('ont-hint').textContent = `Análisis completado sobre ${a.lineas} líneas.`;
+  }catch(e){
+    $('ont-hint').textContent = 'No se pudo leer el log: ' + e.message;
+  }
+}
+
+
+/* =============================================================
+   Navegación entre pantallas (orden → menú → panel)
+============================================================= */
+function mostrarVista(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// Resumen de la orden en la barra superior del panel
+function pintarResumenOrden(){
+  const o = R.orden;
+  const partes = [];
+  if(o.cuadrilla) partes.push(`Cuadrilla <b>${o.cuadrilla}</b>`);
+  if(o.cliente)   partes.push(`Asociado <b>${o.cliente}</b>`);
+  if(o.producto)  partes.push(`Producto <b>${o.producto}</b>`);
+  if(o.urp)       partes.push(`URP <b>${o.urp}</b>`);
+  if(o.claseServicio)       partes.push(`Clase <b>${o.claseServicio}</b>`);
+  if(o.velocidadContratada) partes.push(`Contratado <b>${o.velocidadContratada}</b>`);
+  $('orden-resumen').innerHTML = partes.length ? partes.join('<span style="color:var(--ink-faint)">·</span> ')
+                                               : 'Sin datos de orden';
+}
+
+// Inicia un modo concreto y muestra el panel
+function iniciarModo(modo){
+  MODO = modo;
+  const main = document.querySelector('main');
+  main.classList.toggle('modo-general', modo==='general');
+  const badge = $('modo-badge');
+  if(modo==='general'){
+    badge.textContent = 'General'; badge.className = 'modo-badge gen';
+  } else {
+    badge.textContent = 'Avanzado'; badge.className = 'modo-badge adv';
+  }
+  pintarResumenOrden();
+  mostrarVista('view-app');
+}
+
+async function procesarPdf(file){
+  if(!file) return;
+  if(file.type!=='application/pdf' && !/\.pdf$/i.test(file.name)){
+    $('pdf-status').textContent = 'El archivo no es un PDF.';
+    return;
+  }
+  R.orden.archivo = file.name;
+  $('pdf-name').textContent = file.name;
+  $('pdf-status').textContent = 'Leyendo el PDF…';
+  try{
+    const texto = await leerTextoPdf(file);
+    const datos = extraerOrden(texto);
+    // conservar lo ya escrito si el PDF no trae ese campo
+    R.orden.cuadrilla = datos.cuadrilla || R.orden.cuadrilla;
+    R.orden.cliente   = datos.cliente   || R.orden.cliente;
+    R.orden.producto  = datos.producto  || R.orden.producto;
+    R.orden.urp       = datos.urp       || R.orden.urp;
+    R.orden.claseServicio       = datos.claseServicio       || R.orden.claseServicio;
+    R.orden.velocidadContratada = datos.velocidadContratada || R.orden.velocidadContratada;
+    pintarOrden(true);
+    const hallados = Object.values(datos).filter(Boolean).length;
+    $('pdf-status').textContent = hallados
+      ? `Extraídos ${hallados}/6 campos. Verifique, corrija si es necesario y pulse "Continuar".`
+      : 'No se reconocieron campos automáticamente. Complete los datos a mano y pulse "Continuar".';
+  }catch(e){
+    $('pdf-status').textContent = 'No se pudo leer el PDF: ' + e.message + '. Ingrese los datos a mano.';
+  }
+}
+
+/* =============================================================
+   Construcción de la fila de datos (orden + mediciones)
+============================================================= */
+function filaDatos(){
+  const o = R.orden;
+  const d = R.down||{}, u = R.up||{}, la = R.lat||{}, dn = R.dns||{},
+        bb = R.bb||{}, ip = R.ip||{}, vd = R.video||{};
+  const ver = R.total===0 ? '' : (R.fail===0 ? 'PASA' : 'NO PASA');
+  return {
+    'Fecha':          new Date(R.fecha||Date.now()).toLocaleString('es-CR'),
+    'Cuadrilla':      o.cuadrilla || '',
+    'Asociado':       o.cliente || '',
+    'Producto':       o.producto || '',
+    'URP':            o.urp || '',
+    'ClaseServicio':  o.claseServicio || '',
+    'VelocidadContratada': o.velocidadContratada || '',
+    'VelocidadContratadaMB': velocidadMB(o.velocidadContratada) || '',
+    'PotenciaOptica': (R.opticaManual!=null && !isNaN(R.opticaManual)) ? R.opticaManual : '',
+    'ArchivoOrden':   o.archivo || '',
+    'Bajada':         d.estable!=null?+(+d.estable).toFixed(2):'',
+    'BajadaP90':      d.p90!=null?+(+d.p90).toFixed(2):'',
+    'BajadaProm':     d.avg!=null?+(+d.avg).toFixed(2):'',
+    'BajadaPico':     d.max!=null?+(+d.max).toFixed(2):'',
+    'Subida':         u.estable!=null?+(+u.estable).toFixed(2):'',
+    'SubidaP90':      u.p90!=null?+(+u.p90).toFixed(2):'',
+    'SubidaProm':     u.avg!=null?+(+u.avg).toFixed(2):'',
+    'SubidaPico':     u.max!=null?+(+u.max).toFixed(2):'',
+    'LatenciaProm':   la.avg!=null?+(+la.avg).toFixed(1):'',
+    'LatenciaMin':    la.min!=null?+(+la.min).toFixed(1):'',
+    'LatenciaMax':    la.max!=null?+(+la.max).toFixed(1):'',
+    'Jitter':         la.jit!=null?+(+la.jit).toFixed(1):'',
+    'Perdida':        la.loss!=null?+(+la.loss).toFixed(1):'',
+    'DnsProm':        dn.avg!=null?Math.round(dn.avg):'',
+    'DnsCloudflare':  dn.cf!=null?Math.round(dn.cf):'',
+    'DnsGoogle':      dn.gg!=null?Math.round(dn.gg):'',
+    'BufferReposo':   bb.base!=null?Math.round(bb.base):'',
+    'BufferCarga':    bb.carga!=null?Math.round(bb.carga):'',
+    'BufferDelta':    bb.delta!=null?Math.round(bb.delta):'',
+    'CumplimientoPct': R.cumplimiento? Math.round(R.cumplimiento.pct):'',
+    'LatCargaDown':   (R.latCargaDown&&R.latCargaDown.delta!=null)?Math.round(R.latCargaDown.delta):'',
+    'LatCargaUp':     (R.latCargaUp&&R.latCargaUp.delta!=null)?Math.round(R.latCargaUp.delta):'',
+    'EstabilidadPicos': R.estabilidad? R.estabilidad.picos:'',
+    'EstabilidadPerdida': R.estabilidad? +(+R.estabilidad.pctPerd).toFixed(1):'',
+    'IPv6':           R.ipv6? (R.ipv6.activo?'Sí':'No'):'',
+    'CGNAT':          R.cgnat||'',
+    'VideoArranque':  vd.total!=null?Math.round(vd.total):'',
+    'IPPublica':      ip.ip||'',
+    'Ubicacion':      ip.ciudad?`${ip.ciudad}, ${ip.pais||''}`:'',
+    'ISP':            ip.isp||'',
+    'Resultado':      ver,
+    'OntModelo':      (R.ont&&R.ont.info.modelo)||'',
+    'OntSerie':       (R.ont&&R.ont.info.serie)||'',
+    'OntRx':          (R.ont&&R.ont.info.rxPower!=null)?R.ont.info.rxPower:'',
+    'OntDiagnostico': R.ont?ontEstadoTexto(R.ont.estado):'',
+    'OntProblemas':   R.ont?R.ont.hallazgos.map(h=>`[${h.sev}] ${h.titulo}`).join(' | '):''
+  };
+}
+
+/* =============================================================
+   Excel: descarga local (.xlsx) y subida a la nube
+============================================================= */
+function descargarXlsx(){
+  if(!window.XLSX){ alert('La librería de Excel no cargó (sin Internet).'); return; }
+  const fila = filaDatos();
+  const ws = XLSX.utils.json_to_sheet([fila]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Revisión');
+  const nombre = 'revision_' +
+    (R.orden.urp||R.orden.cuadrilla||'servicio').replace(/[^\w\-]/g,'_') + '_' +
+    new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, nombre);
+}
+
+async function subirExcel(auto){
+  const url = ($('excel-url').value||'').trim();
+  const st = $('excel-status');
+  if(!url){
+    st.className='hint'; st.style.color='var(--warn)';
+    if(auto){
+      st.textContent = 'Subida automática omitida: no hay URL de nube configurada. Se puede descargar el .xlsx.';
+      log('Subida automática omitida: falta configurar la URL de la nube','warn');
+    }else{
+      st.textContent = 'No hay URL configurada. Abra "Configurar destino en la nube" y pegue la URL de la app web de Google, o use "Descargar .xlsx".';
+    }
+    return;
+  }
+  if(auto && R.total===0) return; // nada que subir
+  try{ localStorage.setItem('excelURL', url); }catch(e){}
+  st.style.color='var(--ink-dim)';
+  st.textContent = auto ? 'Subiendo automáticamente a la nube…' : 'Subiendo a la nube…';
+  const fila = filaDatos();
+  const cuerpo = JSON.stringify(fila);
+  try{
+    // text/plain evita el "preflight" CORS que Google Apps Script no responde.
+    const resp = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: cuerpo,
+      redirect:'follow'
+    });
+    if(resp.ok){
+      st.style.color='var(--accent)';
+      st.textContent = '✓ Datos subidos a la hoja en la nube correctamente.';
+      log('Datos subidos a la hoja en la nube','ok');
+    }else{
+      st.style.color='var(--bad)';
+      st.textContent = `El servidor respondió ${resp.status}. Revise la URL o suba el .xlsx manualmente.`;
+      log('Fallo al subir a la nube (HTTP '+resp.status+')','bad');
+    }
+  }catch(e){
+    // Respaldo: algunos navegadores bloquean leer la respuesta de Apps Script.
+    // Reintentamos en modo no-cors; si no lanza error, se asume enviado.
+    try{
+      await fetch(url, {
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: cuerpo
+      });
+      st.style.color='var(--accent)';
+      st.textContent = '✓ Datos enviados a la hoja en la nube (sin confirmación de lectura).';
+      log('Datos enviados a la hoja en la nube (modo no-cors)','ok');
+    }catch(e2){
+      st.style.color='var(--bad)';
+      st.textContent = 'No se pudo conectar con la nube ('+e.message+'). Use "Descargar .xlsx" como respaldo.';
+      log('Error de conexión al subir a la nube','bad');
+    }
+  }
+}
+
+/* =============================================================
+   Consultar reportes desde la nube (Google Sheet)
+============================================================= */
+let REPORTES = [];   // cache de reportes descargados
+
+async function cargarReportes(forzar){
+  const url = ($('excel-url').value||'').trim();
+  const st = $('rep-status'), hint = $('rep-hint');
+  if(!url){ st.textContent='Sin URL'; st.className='status bad'; hint.textContent='No hay URL de la nube configurada.'; return; }
+  if(REPORTES.length && !forzar){ filtrarReportes(); return; }
+  st.textContent='Cargando…'; st.className='status run';
+  hint.textContent='Leyendo datos desde la nube…';
+  $('rep-lista').innerHTML=''; $('rep-detalle').innerHTML='';
+
+  // Intenta varios métodos (JSONP, fetch, proxy) para funcionar hasta en file://
+  try{
+    const data = await leerReportesMulti(url);
+    if(!Array.isArray(data)){
+      if(data && data.error) throw new Error(data.error);
+      throw new Error('respuesta inesperada');
+    }
+    REPORTES = data;
+    st.textContent = `${data.length} reportes`; st.className='status ok';
+    hint.textContent = `Se cargaron ${data.length} reportes. Ingrese un producto y presione Buscar.`;
+    filtrarReportes();
+  }catch(e){
+    st.textContent='Error'; st.className='status bad';
+    hint.textContent = 'No se pudieron leer los reportes: '+e.message+'. Verifique que el Apps Script esté publicado con la Nueva versión y en "Cualquiera".';
+  }
+}
+
+// Carga datos desde Apps Script mediante JSONP (sortea CORS y la redirección de Google)
+// Carga datos desde Apps Script. Intenta varios métodos para que funcione
+// incluso abriendo el HTML directo (file://), donde algunos navegadores
+// bloquean fetch. Orden: JSONP -> fetch directo -> fetch vía proxy CORS.
+async function leerReportesMulti(url){
+  // JSONP es el método más confiable con Apps Script: sigue la redirección de
+  // Google automáticamente y devuelve datos limpios. Se reintenta un par de veces
+  // porque a veces la primera llamada a Google responde con una página temporal.
+  let ultimoError = null;
+  for(let intento=1; intento<=3; intento++){
+    try{
+      const d = await leerJSONP(url);
+      if(Array.isArray(d)) return d;
+      if(d && d.error) throw new Error(d.error);
+    }catch(e){ ultimoError = e; }
+    await new Promise(r=>setTimeout(r, 800));   // pequeña pausa entre reintentos
+  }
+
+  // Respaldo: fetch directo (por si JSONP fallara)
+  try{
+    const sep = url.includes('?')?'&':'?';
+    const r = await fetch(url + sep + 'accion=leer&_=' + Date.now(), {cache:'no-store'});
+    const txt = await r.text();
+    const d = JSON.parse(txt);
+    if(Array.isArray(d)) return d;
+  }catch(e){ ultimoError = e; }
+
+  throw ultimoError || new Error('no se pudo leer');
+}
+
+function leerJSONP(url){
+  return new Promise((resolve, reject)=>{
+    const cb = 'cbRep_' + Math.random().toString(36).slice(2);
+    const sep = url.includes('?')?'&':'?';
+    const src = url + sep + 'accion=leer&callback=' + cb + '&_=' + Date.now();
+    const script = document.createElement('script');
+    let listo = false;
+    const limpiar = ()=>{ try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(script.parentNode) script.parentNode.removeChild(script); };
+    const tempo = setTimeout(()=>{ if(!listo){ limpiar(); reject(new Error('tiempo de espera agotado')); } }, 15000);
+    window[cb] = (data)=>{ listo=true; clearTimeout(tempo); limpiar(); resolve(data); };
+    script.onerror = ()=>{ clearTimeout(tempo); limpiar(); reject(new Error('no respondió la nube')); };
+    script.src = src;
+    document.body.appendChild(script);
+  });
+}
+
+function parseFechaCR(str){
+  // Formato guardado: "12/8/2026, 11:51:49 a. m." o ISO. Devuelve Date o null.
+  if(!str) return null;
+  let d = new Date(str);
+  if(!isNaN(d)) return d;
+  // intentar dd/mm/yyyy
+  const m = String(str).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  return null;
+}
+
+function filtrarReportes(){
+  const prod = ($('rep-producto').value||'').trim().toLowerCase();
+
+  // Requiere un producto para mostrar resultados
+  if(!prod){
+    $('rep-lista').innerHTML = '<div class="hint" style="color:var(--ink-faint)">Ingrese un número de producto y presione Buscar.</div>';
+    $('rep-detalle').innerHTML='';
+    $('rep-status').textContent = `${REPORTES.length} en total`;
+    return;
+  }
+
+  let lista = REPORTES.filter(rep=>{
+    return String(rep.Producto||'').toLowerCase().includes(prod);
+  });
+  // más recientes primero
+  lista.sort((a,b)=>{ const fa=parseFechaCR(a.Fecha)||0, fb=parseFechaCR(b.Fecha)||0; return fb-fa; });
+
+  const cont = $('rep-lista'); cont.innerHTML=''; $('rep-detalle').innerHTML='';
+  if(lista.length===0){
+    cont.innerHTML = '<div class="hint" style="color:var(--ink-faint)">No hay reportes para ese producto.</div>';
+    $('rep-status').textContent = `0 de ${REPORTES.length}`;
+    return;
+  }
+  lista.forEach((rep)=>{
+    const idx = REPORTES.indexOf(rep);
+    const card = document.createElement('div');
+    card.className='card';
+    card.style.cssText='margin-bottom:10px;cursor:pointer';
+    const res = rep.Resultado||'';
+    const resCls = /pasa|ok/i.test(res)&&!/no/i.test(res)?'ok':/no/i.test(res)?'bad':'';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:600;font-size:13px">${rep.Asociado||'(sin asociado)'}</div>
+          <div class="hint" style="margin-top:2px">${rep.Fecha||'—'} · Producto ${rep.Producto||'—'} · Cuadrilla ${rep.Cuadrilla||'—'} · URP ${rep.URP||'—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--acc2)">↓ ${rep.Bajada||'—'} / ↑ ${rep.Subida||'—'} Mbps</div>
+          <span class="status ${resCls}" style="margin-top:4px;display:inline-block">${res||'—'}</span>
+        </div>
+      </div>`;
+    card.onclick = ()=>mostrarDetalleReporte(idx);
+    cont.appendChild(card);
+  });
+  $('rep-status').textContent = `${lista.length} de ${REPORTES.length}`;
+}
+
+function mostrarDetalleReporte(idx){
+  const rep = REPORTES[idx];
+  if(!rep) return;
+  const cont = $('rep-detalle');
+  // agrupar campos por secciones para que se lea ordenado
+  const grupos = {
+    'Orden': ['Fecha','Cuadrilla','URP','ClaseServicio','VelocidadContratada','PotenciaOptica'],
+    'Velocidad': ['Bajada','Subida','CumplimientoPct'],
+    'Latencia': ['LatenciaProm','LatenciaMin','LatenciaMax','Jitter','Perdida','LatCargaDown','LatCargaUp','EstabilidadPicos','EstabilidadPerdida'],
+    'Red': ['DnsProm','DnsCloudflare','DnsGoogle','IPPublica','Ubicacion','ISP','IPv6','VideoArranque'],
+    'ONT': ['OntModelo','OntSerie','OntRx','OntDiagnostico','OntProblemas'],
+    'Resultado': ['Resultado']
+  };
+  let html = `<div class="card"><div class="card-title"><span>${rep.Asociado||'Reporte'}</span><span class="status">${rep.Fecha||''}</span></div>`;
+  for(const [titulo,campos] of Object.entries(grupos)){
+    const filas = campos.filter(c=>rep[c]!==undefined && rep[c]!=='' && rep[c]!==null);
+    if(!filas.length) continue;
+    html += `<div style="margin-top:14px"><div style="font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--acc2);margin-bottom:6px">${titulo}</div>`;
+    filas.forEach(c=>{
+      html += `<div class="kv"><span class="k">${c}</span><span class="v" style="font-size:12px">${rep[c]}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  html += `<div class="actions" style="margin-top:16px"><button onclick="window.print()">Imprimir / PDF</button></div></div>`;
+  cont.innerHTML = html;
+  cont.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* =============================================================
+   Wire-up
+============================================================= */
+window.addEventListener('DOMContentLoaded', ()=>{
+  chartDown = new LiveChart('c-down');
+  chartUp = new LiveChart('c-up');
+  pintarInfo();
+
+  $('btn-start').onclick = ejecutarTodo;
+  $('btn-stop').onclick = ()=>{stop=true; log('Solicitud de detener recibida','warn');};
+
+  // --- Orden de trabajo: PDF ---
+  const drop = $('pdf-drop'), pinput = $('pdf-input');
+  drop.onclick = ()=>pinput.click();
+  pinput.onchange = e => procesarPdf(e.target.files[0]);
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{
+    e.preventDefault(); drop.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{
+    e.preventDefault(); drop.classList.remove('drag');
+  }));
+  drop.addEventListener('drop', e=>{
+    if(e.dataTransfer.files.length) procesarPdf(e.dataTransfer.files[0]);
+  });
+  // edición manual de los campos
+  ['o-cuadrilla','o-urp','o-cliente','o-producto','o-clase','o-velocidad'].forEach(id=>{
+    $(id).addEventListener('input', leerOrdenDeInputs);
+  });
+
+  // Potencia óptica (modo avanzado)
+  const optIn = $('o-optica');
+  if(optIn){
+    const savedOpt = ()=> {
+      const val = optIn.value.trim();
+      R.opticaManual = (val==='' ? null : parseFloat(val));
+      const st = $('st-optica');
+      if(val===''){ st.textContent='Requerido'; st.className='status warn'; }
+      else if(isNaN(parseFloat(val))){ st.textContent='Inválido'; st.className='status bad'; }
+      else {
+        const v = parseFloat(val);
+        // valoración rápida del nivel óptico
+        if(v <= -28){ st.textContent='Crítico'; st.className='status bad'; }
+        else if(v <= -25){ st.textContent='Bajo'; st.className='status warn'; }
+        else { st.textContent='OK'; st.className='status ok'; }
+      }
+    };
+    optIn.addEventListener('input', savedOpt);
+  }
+  actualizarEstadoOrden();
+
+  // --- Diagnóstico ONT: log ---
+  const odrop = $('ont-drop'), oinput = $('ont-input');
+  odrop.onclick = ()=>oinput.click();
+  oinput.onchange = e => procesarLogOnt(e.target.files[0]);
+  ['dragenter','dragover'].forEach(ev=>odrop.addEventListener(ev, e=>{
+    e.preventDefault(); odrop.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev=>odrop.addEventListener(ev, e=>{
+    e.preventDefault(); odrop.classList.remove('drag');
+  }));
+  odrop.addEventListener('drop', e=>{
+    if(e.dataTransfer.files.length) procesarLogOnt(e.dataTransfer.files[0]);
+  });
+
+  // --- Navegación: home → (revisar | reportes) ---
+  function irAlMenu(){
+    const llenos = [R.orden.cuadrilla,R.orden.cliente,R.orden.producto,R.orden.urp].filter(Boolean).length;
+    $('menu-sub').textContent = llenos
+      ? `Orden cargada (${llenos}/4 campos). Elija una de las dos opciones.`
+      : 'Sin datos de orden. Puede continuar de todos modos.';
+    mostrarVista('view-menu');
+  }
+  $('btn-continuar').onclick = irAlMenu;
+  $('btn-omitir').onclick = irAlMenu;
+  $('btn-volver-orden').onclick = ()=>mostrarVista('view-orden');
+  $('card-general').onclick = ()=>iniciarModo('general');
+  $('card-avanzado').onclick = ()=>iniciarModo('avanzado');
+  $('btn-menu').onclick = ()=>{
+    if(corriendo){ alert('Espere a que termine la revisión en curso.'); return; }
+    mostrarVista('view-menu');
+  };
+
+  // Página principal: dos opciones
+  $('home-revisar').onclick = ()=>{
+    mostrarVista('view-orden');
+    setTimeout(()=>{ try{ pinput.click(); }catch(e){} }, 300);
+  };
+  /* opción de consultas retirada en esta versión */
+
+  // --- Excel / Google Sheets ---
+  // La URL de la nube está fija en el HTML (input oculto). La subida es automática.
+  const URL_NUBE_DEFECTO = 'https://script.google.com/macros/s/AKfycbwy1wj4budHv3iFpJK4oIaKVkLvdZ6V6tbN_aiOVC6tF5KdmxV4pcF1738MmouPDw0l/exec';
+  try{
+    const saved = localStorage.getItem('excelURL');
+    if(saved && saved.trim()) $('excel-url').value = saved.trim();
+    else $('excel-url').value = URL_NUBE_DEFECTO;
+  }catch(e){ $('excel-url').value = URL_NUBE_DEFECTO; }
+
+  $('btn-print').onclick = ()=>window.print();
+});
+</script>
+
+</body>
+</html>
