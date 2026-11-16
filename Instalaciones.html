@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Instalación de Servicio — Red de Acceso</title>
+<title>Registro de Instalación de Servicio — Red de Acceso</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -256,6 +256,13 @@
   /* ---------- vistas ---------- */
   .view{display:none}
   .view.active{display:block;animation:fadeIn .25s ease}
+  .step-pane{display:none}
+  .step-pane.active{display:block;animation:fadeIn .25s ease}
+  .steps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 16px}
+  .step-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);color:var(--ink-dim);font-weight:600}
+  .step-item .step-number{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--panel-3);font-family:var(--mono);font-size:12px}
+  .step-item.active{border-color:rgba(59,130,246,.55);color:var(--ink);background:rgba(59,130,246,.10)}
+  .step-item.active .step-number{background:var(--acc2);color:#fff}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .welcome{max-width:780px;margin:24px auto 0}
   .welcome .lead{display:inline-block;font-size:12.5px;font-weight:600;color:#93c5fd;background:rgba(59,130,246,.12);padding:5px 12px;border-radius:999px;margin-bottom:14px}
@@ -348,6 +355,8 @@
     .hero .metric .n,.metric .n{color:#111 !important;background:none !important;-webkit-text-fill-color:#111;font-size:32px}
     .row{page-break-inside:avoid}
     .actions,.chart,.gauge,#log,footer .actions{display:none !important}
+    .step-pane{display:block !important}
+    .steps{display:none !important}
     .card:has(#log){display:none}
     button,#btn-start,#btn-stop,#btn-print{display:none}
     .kv{border-bottom:1px dotted #999}
@@ -367,7 +376,7 @@
       <div class="brand-mark"></div>
       <div class="brand-text">
         <div class="k">Departamento de Red de Acceso</div>
-        <div class="n">Instalación de Servicio</div>
+        <div class="n">Registro de Instalación de Servicios</div>
       </div>
     </div>
     <div class="meta">
@@ -396,20 +405,20 @@
         </div>
         <div class="mc-go">Comenzar →</div>
       </div>
-      
+
     </div>
   </div>
 
   <!-- ============ VISTA 1: ADJUNTAR ORDEN ============ -->
-  <div class="view active" id="view-orden">
+  <div class="view" id="view-orden">
     <div class="welcome">
       <div class="lead">Departamento de Red de Acceso</div>
-      <h1>Instalación de Servicio</h1>
-      <p class="sub">Para comenzar, adjunte el PDF de la orden de trabajo. Los datos se leen automáticamente.</p>
+      <h1>Registro de Instalación de Servicios</h1>
+      <p class="sub">Si desea incluir los datos de la orden, adjunte el PDF. También puede continuar sin cargarlo.</p>
 
       <div class="card">
         <div class="card-title">
-          <span><span class="idx">01</span> Orden de trabajo<span class="help" tabindex="0" data-tip="Datos del asociado extraídos del PDF de la orden: cuadrilla, asociado, producto y número de equipo (URP).">?</span></span>
+          <span><span class="idx">01</span> Orden de trabajo<span class="help" tabindex="0" data-tip="Datos de la orden de trabajo extraídos del PDF, como cuadrilla, asociado, producto y velocidad contratada.">?</span></span>
           <span class="status" id="st-orden">Sin datos</span>
         </div>
 
@@ -427,10 +436,6 @@
           <div class="field" id="f-cuadrilla">
             <label>N.º de cuadrilla</label>
             <input type="text" id="o-cuadrilla" placeholder="—" autocomplete="off">
-          </div>
-          <div class="field" id="f-urp">
-            <label>N.º de equipo (URP)</label>
-            <input type="text" id="o-urp" placeholder="—" autocomplete="off">
           </div>
           <div class="field" id="f-cliente" style="grid-column:1/-1">
             <label>Asociado</label>
@@ -461,21 +466,27 @@
   <!-- ============ VISTA 2: MENÚ DE MODOS (retirada) ============ -->
 
   <!-- ============ VISTA 3: PANEL DE PRUEBAS ============ -->
-  <div class="view" id="view-app">
+  <div class="view active" id="view-app">
 
   <!-- Barra de contexto: orden -->
   <section class="row" style="margin-bottom:16px">
     <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div class="orden-chip" id="orden-resumen">Sin datos de orden</div>
-      <button id="btn-menu">← Cambiar orden</button>
+      <button id="btn-menu">Cargar o cambiar orden</button>
     </div>
   </section>
 
+  <div class="steps" aria-label="Pasos de la instalación">
+    <div class="step-item active" id="step-ind-potencia" aria-current="step"><span class="step-number">1</span> Potencia</div>
+    <div class="step-item" id="step-ind-velocidad"><span class="step-number">2</span> Prueba de velocidad</div>
+  </div>
+
+  <div class="step-pane active" id="step-potencia">
   <!-- POTENCIA ÓPTICA: foto del medidor con lectura automática (OCR) -->
   <section class="row" style="margin-bottom:16px">
     <div class="card" id="card-optica">
       <div class="card-title">
-        <span><span class="idx">✳</span> Potencia óptica (foto del medidor)<span class="help" tabindex="0" data-tip="Tome una foto clara de la pantalla del medidor de potencia óptica. El sistema intenta leer el número automáticamente (OCR). Rango aceptable: entre -25 y -15 dBm. Si está fuera de ese rango, la instalación se marca como FALLO. Puede corregir el valor a mano si el OCR falla.">?</span></span>
+        <span><span class="idx">✳</span> Potencia óptica (foto del medidor)<span class="help" tabindex="0" data-tip="Tome una foto clara de la pantalla del medidor de potencia óptica. El sistema intenta leer el número automáticamente (OCR). Si está fuera de  rango, la instalación se marca como FALLO. Puede corregir el valor a mano si el OCR falla.">?</span></span>
         <span class="status" id="st-optica">Requerido</span>
       </div>
 
@@ -485,15 +496,10 @@
           <div class="drop" id="opt-drop" style="min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px;padding:16px">
             <div style="font-weight:600">Adjuntar foto del medidor</div>
             <div class="hint" style="max-width:40ch">
-              Para que la foto quede con la ubicación: abra la <b>cámara del teléfono</b>
-              (fuera del navegador), tome la foto y toque <b>Elegir foto</b>.
-            </div>
+   
             <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%">
               <button type="button" class="primary" id="opt-elegir" style="flex:1 1 150px;max-width:220px">Elegir foto</button>
               <button type="button" id="opt-tomar" style="flex:1 1 150px;max-width:220px">Tomar foto aquí</button>
-            </div>
-            <div class="hint" style="max-width:40ch;font-size:11.5px;color:var(--ink-faint)">
-              "Tomar foto aquí" usa la cámara del navegador: la foto no trae ubicación y pedirá permiso del navegador para registrarla.
             </div>
             <div class="hint" id="opt-name">Sin foto cargada</div>
           </div>
@@ -557,8 +563,7 @@
             </div>
           </div>
           <div class="hint" id="optica-hint" style="margin-top:10px">
-            Si la potencia del equipo es <b>peor</b> que la de diseño por <b>más de 2 dB</b>, se registra como <b>FALLO</b>.
-            Si es igual o mejor, se acepta. Si el OCR no lee bien, corrija el valor a mano.
+            Si el OCR no lee bien, corrija el valor a mano.
           </div>
 
           <!-- Validación de ubicación por GPS de la foto -->
@@ -580,6 +585,16 @@
       </div>
     </div>
   </section>
+
+  <div class="actions" style="justify-content:flex-end;margin-bottom:24px">
+    <button class="primary" id="btn-paso-velocidad">Continuar a prueba de velocidad →</button>
+  </div>
+  </div><!-- /step-potencia -->
+
+  <div class="step-pane" id="step-velocidad">
+  <div class="actions" style="justify-content:flex-start;margin-bottom:16px">
+    <button id="btn-paso-potencia">← Volver a potencia</button>
+  </div>
 
   <!-- HERO: acción principal -->
   <section class="hero row" style="grid-template-columns:1fr auto;gap:32px;align-items:center;margin-bottom:24px">
@@ -831,13 +846,14 @@
     </div>
   </section>
 
+  </div><!-- /step-velocidad -->
   </div><!-- /view-app -->
 
 </main>
 
 <footer>
   <span>Coopelesca · Red de Acceso</span>
-  <span id="build">v1.0 · autocontenido por Creado por Fauricio Miranda</span>
+  <span id="build">Creado por Fauricio Miranda</span>
 </footer>
 
 <!-- Librerías para lectura de PDF, Excel y OCR de la foto (CDN, con degradación elegante) -->
@@ -1302,7 +1318,7 @@ const CFG = {
 /* --- estado global --- */
 const R = {
   fecha: '',
-  orden: { cuadrilla:'', cliente:'', producto:'', urp:'', archivo:'', claseServicio:'', velocidadContratada:'', dops:[], dop:null },
+  orden: { cuadrilla:'', cliente:'', producto:'', archivo:'', claseServicio:'', velocidadContratada:'', dops:[], dop:null },
   dopCmp: null,          // plano, serie, posicion, diseno, medida, dif (se llena en actualizarComparacionDop)
   opticaManual: null,
   opticaFoto: null,      // base64 (data URL) de la foto del medidor
@@ -2361,33 +2377,37 @@ function calcularVeredicto(){
 /* =============================================================
    Ejecución
 ============================================================= */
+function validarPotenciaRequerida(){
+  const val = ($('o-optica') && $('o-optica').value || '').trim();
+  const faltaFoto = !R.opticaFoto;
+  const faltaValor = (val==='' || isNaN(parseFloat(val)));
+  if(faltaFoto || faltaValor){
+    mostrarPaso('step-potencia');
+    const card = $('card-optica');
+    if(card){
+      card.classList.add('fail');
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(()=>card.classList.remove('fail'), 2500);
+    }
+    const st = $('st-optica');
+    if(st){ st.textContent='Requerido'; st.className='status bad'; }
+    if($('optica-hint')){
+      $('optica-hint').textContent = faltaFoto
+        ? '⚠ Debe adjuntar la foto del medidor y confirmar el valor antes de continuar.'
+        : '⚠ Debe ingresar la potencia óptica (dBm) antes de continuar.';
+    }
+    const foco = $(faltaFoto ? 'opt-elegir' : 'o-optica');
+    if(foco) foco.focus();
+    return false;
+  }
+  R.opticaManual = parseFloat(val);
+  return true;
+}
+
 async function ejecutarTodo(){
   if(corriendo) return;
 
-  // En INSTALACIONES la potencia óptica (foto + valor) es siempre obligatoria.
-  {
-    const val = ($('o-optica') && $('o-optica').value || '').trim();
-    const faltaFoto = !R.opticaFoto;
-    const faltaValor = (val==='' || isNaN(parseFloat(val)));
-    if(faltaFoto || faltaValor){
-      const card = $('card-optica');
-      if(card){
-        card.classList.add('fail');
-        card.scrollIntoView({behavior:'smooth', block:'center'});
-        setTimeout(()=>card.classList.remove('fail'), 2500);
-      }
-      const st = $('st-optica');
-      if(st){ st.textContent='Requerido'; st.className='status bad'; }
-      if($('optica-hint')){
-        $('optica-hint').textContent = faltaFoto
-          ? '⚠ Debe adjuntar la foto del medidor y confirmar el valor antes de iniciar.'
-          : '⚠ Debe ingresar la potencia óptica (dBm) antes de iniciar.';
-      }
-      const oi = $('o-optica'); if(oi && !faltaFoto) oi.focus();
-      return;
-    }
-    R.opticaManual = parseFloat(val);
-  }
+  if(!validarPotenciaRequerida()) return;
 
   corriendo = true; stop = false;
   R.pass=R.fail=R.warn=R.total=0;
@@ -2454,7 +2474,6 @@ function generarTxt(){
   l.push(`  N° cuadrilla:    ${R.orden.cuadrilla||'—'}`);
   l.push(`  Asociado:        ${R.orden.cliente||'—'}`);
   l.push(`  Producto:        ${R.orden.producto||'—'}`);
-  l.push(`  N° equipo (URP): ${R.orden.urp||'—'}`);
   l.push(`  Clase servicio:  ${R.orden.claseServicio||'—'}`);
   l.push(`  Vel. contratada: ${R.orden.velocidadContratada||'—'}`);
   if(R.opticaManual!=null && !isNaN(R.opticaManual))
@@ -2786,7 +2805,6 @@ function extraerOrden(texto){
                buscarCampo(t, ['n[uú]mero de cuadrilla','no\\.? de cuadrilla','n\\.?°? ?cuadrilla','cuadrilla']),
     cliente:   extraerAsociado(t),
     producto:  buscarCampo(t, ['producto','plan','servicio contratado','paquete']),
-    urp:       buscarCampo(t, ['n[uú]mero de equipo','no\\.? de equipo','equipo \\(urp\\)','urp','onu','ont','n\\.?°? ?equipo']),
     claseServicio: extraerClaseServicio(t),
     velocidadContratada: vel,
     // Lista completa de DOPs detectados y el seleccionado por defecto (el último,
@@ -2799,13 +2817,12 @@ function extraerOrden(texto){
 // Refleja R.orden en los inputs (marcando en verde los autocompletados)
 function pintarOrden(auto){
   $('o-cuadrilla').value = R.orden.cuadrilla || '';
-  $('o-urp').value       = R.orden.urp || '';
   $('o-cliente').value   = R.orden.cliente || '';
   $('o-producto').value  = R.orden.producto || '';
   $('o-clase').value     = R.orden.claseServicio || '';
   $('o-velocidad').value = R.orden.velocidadContratada || '';
   if(auto){
-    [['f-cuadrilla','cuadrilla'],['f-urp','urp'],['f-cliente','cliente'],['f-producto','producto'],
+    [['f-cuadrilla','cuadrilla'],['f-cliente','cliente'],['f-producto','producto'],
      ['f-clase','claseServicio'],['f-velocidad','velocidadContratada']]
       .forEach(([fid,k])=>{ $(fid).classList.toggle('autoset', !!R.orden[k]); });
   }
@@ -2815,7 +2832,6 @@ function pintarOrden(auto){
 // Lee inputs -> R.orden (cuando el usuario edita a mano)
 function leerOrdenDeInputs(){
   R.orden.cuadrilla = $('o-cuadrilla').value.trim();
-  R.orden.urp       = $('o-urp').value.trim();
   R.orden.cliente   = $('o-cliente').value.trim();
   R.orden.producto  = $('o-producto').value.trim();
   R.orden.claseServicio = $('o-clase').value.trim();
@@ -2825,7 +2841,7 @@ function leerOrdenDeInputs(){
 
 function actualizarEstadoOrden(){
   const o = R.orden;
-  const campos = [o.cuadrilla,o.cliente,o.producto,o.urp,o.claseServicio,o.velocidadContratada];
+  const campos = [o.cuadrilla,o.cliente,o.producto,o.claseServicio,o.velocidadContratada];
   const llenos = campos.filter(Boolean).length;
   const el = $('st-orden');
   if(llenos===0){ el.textContent='Sin datos'; el.className='status'; }
@@ -3049,6 +3065,21 @@ function mostrarVista(id){
   window.scrollTo(0,0);
 }
 
+function mostrarPaso(id){
+  document.querySelectorAll('.step-pane').forEach(p=>p.classList.toggle('active',p.id===id));
+  const potencia = id==='step-potencia';
+  $('step-ind-potencia').classList.toggle('active', potencia);
+  $('step-ind-velocidad').classList.toggle('active', !potencia);
+  if(potencia){
+    $('step-ind-potencia').setAttribute('aria-current','step');
+    $('step-ind-velocidad').removeAttribute('aria-current');
+  }else{
+    $('step-ind-potencia').removeAttribute('aria-current');
+    $('step-ind-velocidad').setAttribute('aria-current','step');
+  }
+  window.scrollTo(0,0);
+}
+
 // Resumen de la orden en la barra superior del panel
 function pintarResumenOrden(){
   const o = R.orden;
@@ -3056,7 +3087,6 @@ function pintarResumenOrden(){
   if(o.cuadrilla) partes.push(`Cuadrilla <b>${o.cuadrilla}</b>`);
   if(o.cliente)   partes.push(`Asociado <b>${o.cliente}</b>`);
   if(o.producto)  partes.push(`Producto <b>${o.producto}</b>`);
-  if(o.urp)       partes.push(`URP <b>${o.urp}</b>`);
   if(o.claseServicio)       partes.push(`Clase <b>${o.claseServicio}</b>`);
   if(o.velocidadContratada) partes.push(`Contratado <b>${o.velocidadContratada}</b>`);
   $('orden-resumen').innerHTML = partes.length ? partes.join('<span style="color:var(--ink-faint)">·</span> ')
@@ -3078,6 +3108,7 @@ function iniciarModo(modo){
   }
   pintarResumenOrden();
   mostrarVista('view-app');
+  mostrarPaso('step-potencia');
 }
 
 async function procesarPdf(file){
@@ -3096,7 +3127,6 @@ async function procesarPdf(file){
     R.orden.cuadrilla = datos.cuadrilla || R.orden.cuadrilla;
     R.orden.cliente   = datos.cliente   || R.orden.cliente;
     R.orden.producto  = datos.producto  || R.orden.producto;
-    R.orden.urp       = datos.urp       || R.orden.urp;
     R.orden.claseServicio       = datos.claseServicio       || R.orden.claseServicio;
     R.orden.velocidadContratada = datos.velocidadContratada || R.orden.velocidadContratada;
     // La lista de DOPs y el seleccionado se sobreescriben con los de este PDF
@@ -3104,9 +3134,9 @@ async function procesarPdf(file){
     R.orden.dop  = datos.dop  || null;
     pintarOrden(true);
     try{ pintarListaDops(); actualizarComparacionDop(); actualizarComparacionGeo(); }catch(e){}
-    const hallados = Object.values(datos).filter(Boolean).length;
+    const hallados = [datos.cuadrilla,datos.cliente,datos.producto,datos.claseServicio,datos.velocidadContratada].filter(Boolean).length;
     $('pdf-status').textContent = hallados
-      ? `Extraídos ${hallados}/6 campos. Verifique, corrija si es necesario y pulse "Continuar".`
+      ? `Extraídos ${hallados}/5 campos. Verifique, corrija si es necesario y pulse "Continuar".`
       : 'No se reconocieron campos automáticamente. Complete los datos a mano y pulse "Continuar".';
   }catch(e){
     $('pdf-status').textContent = 'No se pudo leer el PDF: ' + e.message + '. Ingrese los datos a mano.';
@@ -3128,7 +3158,6 @@ function filaDatos(){
     'Cuadrilla':      o.cuadrilla || '',
     'Asociado':       o.cliente || '',
     'Producto':       o.producto || '',
-    'URP':            o.urp || '',
     'ClaseServicio':  o.claseServicio || '',
     'VelocidadContratada': o.velocidadContratada || '',
     'VelocidadContratadaMB': velocidadMB(o.velocidadContratada) || '',
@@ -3200,7 +3229,7 @@ function descargarXlsx(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Revisión');
   const nombre = 'revision_' +
-    (R.orden.urp||R.orden.cuadrilla||'servicio').replace(/[^\w\-]/g,'_') + '_' +
+    (R.orden.cuadrilla||'servicio').replace(/[^\w\-]/g,'_') + '_' +
     new Date().toISOString().slice(0,10) + '.xlsx';
   XLSX.writeFile(wb, nombre);
 }
@@ -3384,7 +3413,7 @@ function filtrarReportes(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <div>
           <div style="font-weight:600;font-size:13px">${rep.Asociado||'(sin asociado)'}</div>
-          <div class="hint" style="margin-top:2px">${rep.Fecha||'—'} · Producto ${rep.Producto||'—'} · Cuadrilla ${rep.Cuadrilla||'—'} · URP ${rep.URP||'—'}</div>
+          <div class="hint" style="margin-top:2px">${rep.Fecha||'—'} · Producto ${rep.Producto||'—'} · Cuadrilla ${rep.Cuadrilla||'—'}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:var(--mono);font-size:12px;color:var(--acc2)">↓ ${rep.Bajada||'—'} / ↑ ${rep.Subida||'—'} Mbps</div>
@@ -3403,7 +3432,7 @@ function mostrarDetalleReporte(idx){
   const cont = $('rep-detalle');
   // agrupar campos por secciones para que se lea ordenado
   const grupos = {
-    'Orden': ['Fecha','Cuadrilla','URP','ClaseServicio','VelocidadContratada','PotenciaOptica'],
+    'Orden': ['Fecha','Cuadrilla','ClaseServicio','VelocidadContratada','PotenciaOptica'],
     'Velocidad': ['Bajada','Subida','CumplimientoPct'],
     'Latencia': ['LatenciaProm','LatenciaMin','LatenciaMax','Jitter','Perdida','LatCargaDown','LatCargaUp','EstabilidadPicos','EstabilidadPerdida'],
     'Red': ['DnsProm','DnsCloudflare','DnsGoogle','IPPublica','Ubicacion','ISP','IPv6','VideoArranque'],
@@ -3450,7 +3479,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     if(e.dataTransfer.files.length) procesarPdf(e.dataTransfer.files[0]);
   });
   // edición manual de los campos
-  ['o-cuadrilla','o-urp','o-cliente','o-producto','o-clase','o-velocidad'].forEach(id=>{
+  ['o-cuadrilla','o-cliente','o-producto','o-clase','o-velocidad'].forEach(id=>{
     $(id).addEventListener('input', leerOrdenDeInputs);
   });
 
@@ -4032,6 +4061,13 @@ window.addEventListener('DOMContentLoaded', ()=>{
   $('btn-menu').onclick = ()=>{
     if(corriendo){ alert('Espere a que termine la instalación en curso.'); return; }
     mostrarVista('view-orden');
+  };
+  $('btn-paso-velocidad').onclick = ()=>{
+    if(validarPotenciaRequerida()) mostrarPaso('step-velocidad');
+  };
+  $('btn-paso-potencia').onclick = ()=>{
+    if(corriendo){ alert('Espere a que termine la prueba en curso.'); return; }
+    mostrarPaso('step-potencia');
   };
 
   // Página principal: dos opciones
