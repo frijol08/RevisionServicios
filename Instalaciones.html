@@ -53,15 +53,6 @@
   }
   .top{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;gap:24px}
   .brand{display:flex;align-items:center;gap:14px}
-  .brand-mark{
-    width:40px;height:40px;border-radius:12px;background:var(--grad);
-    position:relative;box-shadow:0 8px 24px -8px rgba(37,99,235,.7);
-  }
-  .brand-mark::before{
-    content:'';position:absolute;inset:11px;border-radius:50%;
-    border:2.5px solid rgba(255,255,255,.95);border-right-color:transparent;
-    transform:rotate(-45deg);
-  }
   .brand-text{line-height:1.25}
   .brand-text .k{font-size:12px;color:var(--ink-dim);font-weight:500}
   .brand-text .n{font-size:17px;font-weight:700;letter-spacing:-.02em}
@@ -373,7 +364,6 @@
 <header>
   <div class="top">
     <div class="brand">
-      <div class="brand-mark"></div>
       <div class="brand-text">
         <div class="k">Departamento de Red de Acceso</div>
         <div class="n">Registro de Instalación de Servicios</div>
@@ -486,7 +476,7 @@
   <section class="row" style="margin-bottom:16px">
     <div class="card" id="card-optica">
       <div class="card-title">
-        <span><span class="idx">✳</span> Potencia óptica (foto del medidor)<span class="help" tabindex="0" data-tip="Tome una foto clara de la pantalla del medidor de potencia óptica. El sistema intenta leer el número automáticamente (OCR). Si está fuera de  rango, la instalación se marca como FALLO. Puede corregir el valor a mano si el OCR falla.">?</span></span>
+        <span>Potencia óptica (foto del medidor)<span class="help" tabindex="0" data-tip="Tome una foto clara de la pantalla del medidor de potencia óptica. El sistema intenta leer el número automáticamente (OCR). Si está fuera de  rango, la instalación se marca como FALLO. Puede corregir el valor a mano si el OCR falla.">?</span></span>
         <span class="status" id="st-optica">Requerido</span>
       </div>
 
