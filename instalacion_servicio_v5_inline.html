@@ -3674,12 +3674,18 @@ window.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  // Al cargar la foto solo se lee el EXIF. El GPS del navegador queda como respaldo
-  // OPCIONAL: aparece un botón en la tarjeta y lo usa solo si el técnico lo pide.
+  // Al cargar la foto: primero EXIF; si la foto no trae GPS, cae AUTOMÁTICAMENTE
+  // al GPS del navegador sin pedir confirmación al técnico (el navegador puede
+  // mostrar su prompt nativo de permiso la primera vez; eso no lo controlamos).
   async function obtenerUbicacionFoto(file){
     const porExif = await leerGpsDeFoto(file);
     if(porExif) return { ...porExif, fuente: 'EXIF' };
-    return { error: 'sin-exif' };
+    try{
+      const p = await obtenerUbicacionNavegador();
+      return { lat: p.lat, lon: p.lon, precision: p.precision, fuente: 'navegador' };
+    }catch(e){
+      return { error: e.kind || 'no-disponible' };
+    }
   }
 
   // Mensajes de error de la ubicación, humanizados por tipo.
