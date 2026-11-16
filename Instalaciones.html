@@ -2306,28 +2306,37 @@ function calcularVeredicto(){
   const out = $('verdict-out');
   const sub = $('verdict-sub');
   el.classList.remove('pass','fail');
-  // Regla adicional para instalaciones: si la potencia óptica quedó fuera de rango, NO PASA.
-  const opticaFalla = (R.opticaEstado === 'FALLO');
-  if(R.fail===0 && !opticaFalla && R.total>0){
+  if(R.opticaEstado === 'OK'){
+    verdict('Potencia óptica','PASA',`${fmt(R.opticaManual,2)} dBm`);
+  } else if(R.opticaEstado === 'FALLO'){
+    const cmp = R.dopCmp;
+    let det = 'sin lectura válida';
+    if(cmp && cmp.dif!=null && cmp.diseno!=null){
+      det = `${fmt(R.opticaManual,2)} dBm frente al diseño ${fmt(cmp.diseno,2)} dBm (${fmt(Math.abs(cmp.dif),2)} dB peor que el diseño; máximo 2 dB)`;
+    } else if(R.opticaManual!=null){
+      det = `${fmt(R.opticaManual,2)} dBm: fuera del rango aceptable o el diseño DOP no es válido`;
+    }
+    verdict('Potencia óptica','NO PASA',det);
+  }
+
+  const geo = R.geoCmp;
+  if(geo && geo.estado === 'OK'){
+    verdict('Ubicación de la foto','PASA',geo.metros!=null ? `${fmt(geo.metros,0)} m del sitio` : 'ubicación validada');
+  } else if(geo && geo.estado === 'FALLO'){
+    const det = geo.metros==null
+      ? 'no se pudo obtener la ubicación GPS de la foto'
+      : `la foto está a ${fmt(geo.metros,0)} m del sitio (máximo 400 m)`;
+    verdict('Ubicación de la foto','NO PASA',det);
+  } else if(geo && geo.estado === 'AVISO'){
+    verdict('Ubicación de la foto','AVISO','no se pudo validar la distancia contra el DOP');
+  }
+
+  if(R.fail===0 && R.total>0){
     el.classList.add('pass');
     out.textContent = 'PASA';
-    sub.innerHTML = `<div style="font-size:12px;color:var(--ink-dim);margin-top:8px">${R.pass} pruebas correctas · ${R.warn} avisos · Potencia óptica: OK</div>`;
-  } else if(R.fail>0 || opticaFalla){
-    if(opticaFalla && R.fail===0){
-      const geoFalla = R.geoCmp && R.geoCmp.estado === 'FALLO';
-      let det;
-      if(geoFalla && R.geoCmp.metros==null){
-        det = 'la foto no trae GPS (se requiere ubicación)';
-      } else if(geoFalla){
-        det = 'la foto no se tomó en el sitio del asociado';
-      } else if(R.dopCmp && R.dopCmp.dif!=null){
-        det = `${R.opticaManual.toFixed(2)} dBm, diseño ${R.dopCmp.diseno.toFixed(2)} dBm (${Math.abs(R.dopCmp.dif).toFixed(2)} dB peor que diseño, umbral 2 dB)`;
-      } else if(R.opticaManual!=null){
-        det = R.opticaManual.toFixed(2)+' dBm (fuera de -25/-15, sin DOP)';
-      } else det = 'sin lectura válida';
-      R.fail = 1; R.total = Math.max(R.total,1);
-      R.detalles.push({nombre: geoFalla ? 'Ubicación de la foto' : 'Potencia óptica vs DOP', estado:'NO PASA', det});
-    }
+    const estadoUbicacion = geo ? (geo.estado==='OK' ? 'OK' : geo.estado==='FALLO' ? 'FALLO' : 'AVISO') : 'Sin validar';
+    sub.innerHTML = `<div style="font-size:12px;color:var(--ink-dim);margin-top:8px">${R.pass} pruebas correctas · ${R.warn} avisos · Potencia óptica: ${R.opticaEstado==='OK'?'OK':'Sin validar'} · Ubicación: ${estadoUbicacion}</div>`;
+  } else if(R.fail>0){
     el.classList.add('fail');
     out.textContent = 'NO PASA';
     const fallidos = R.detalles.filter(d=>d.estado==='NO PASA');
@@ -3489,8 +3498,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
     // El estado real lo decide actualizarComparacionDop (potencia) + actualizarComparacionGeo (ubicación).
     actualizarComparacionDop();
     actualizarComparacionGeo();
-    // Si la ubicación falló, el equipo entero se marca FALLO aunque la potencia sea buena.
-    if(R.geoCmp && R.geoCmp.estado === 'FALLO') R.opticaEstado = 'FALLO';
     const et = (R.opticaEstado==='OK') ? 'OK' : (R.opticaEstado==='FALLO') ? 'FALLO' : 'Pendiente';
     const cls = (R.opticaEstado==='OK') ? 'ok' : (R.opticaEstado==='FALLO') ? 'bad' : 'warn';
     st.textContent = et+' ('+v.toFixed(2)+' dBm)';
